@@ -45,7 +45,7 @@ export function DocsPage() {
             </P>
 
             <H3>Build from source</H3>
-            <CopyBlock command="git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast" />
+            <CopyBlock command={"git clone https://github.com/nathanjmorton/zigtsc &&\ncd zigtsc &&\nzig build -Doptimize=ReleaseFast"} />
             <P>Requires <A href="https://ziglang.org/download/">Zig 0.16.0</A>.</P>
           </Section>
 
@@ -69,7 +69,7 @@ export function DocsPage() {
               Scaffold a project, transpile to JS, and run it. The scaffold includes interfaces, classes,
               functions, and top-level code. Types are stripped; classes emit as ES6 classes.
             </P>
-            <CopyBlock command="zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js" />
+            <CopyBlock command={"zigtsc init myapp &&\ncd myapp &&\nzigtsc main.ts -target js output.js &&\nnode output.js"} />
           </Section>
 
           <Section title="Full pipeline: TypeScript → C++ → native binary">
@@ -80,7 +80,7 @@ export function DocsPage() {
               and dependency-aware <Code>#include</Code>s. Then <A href="https://zigc.nathanjmorton.com">zigc</A> compiles
               and statically links everything.
             </P>
-            <CopyBlock command="zigtsc init myapp && cd myapp && mkdir -p out && zigtsc main.ts -target cpp out/" />
+            <CopyBlock command={"zigtsc init myapp &&\ncd myapp &&\nmkdir -p out &&\nzigtsc main.ts -target cpp out/"} />
             <P>This generates:</P>
             <CodeBlock lines={[
               'out/Counter.h      ← #pragma once, class Counter { int32_t value; ... };',
@@ -88,7 +88,7 @@ export function DocsPage() {
               'out/main.cpp       ← #include "Counter.h", struct Point, distance(), int main() { ... }',
             ]} />
             <P>Create a zigc C++ project, copy the generated files, build and run:</P>
-            <CopyBlock command="zigc init myapp-cpp --cpp && cp out/*.h out/*.cpp myapp-cpp/src/ && cd myapp-cpp && zigc build && zigc run" />
+            <CopyBlock command={"zigc init myapp-cpp --cpp &&\ncp out/*.h out/*.cpp myapp-cpp/src/ &&\ncd myapp-cpp &&\nzigc build &&\nzigc run"} />
             <P>
               zigc's <Code>build.zig</Code> compiles all <Code>.cpp</Code> files in <Code>src/</Code>,
               resolves the <Code>#include</Code> headers, and statically links them into one binary.
@@ -100,8 +100,8 @@ export function DocsPage() {
               Single-file C output. Interfaces become <Code>typedef struct</Code>, functions map directly,
               <Code>console.log</Code> becomes <Code>printf</Code> with format strings inferred from types.
             </P>
-            <CopyBlock command="zigtsc init myapp && cd myapp && zigtsc main.ts output.c" />
-            <CopyBlock command="zigc init myapp-c && cp output.c myapp-c/src/main.c && cd myapp-c && zigc build && zigc run" />
+            <CopyBlock command={"zigtsc init myapp &&\ncd myapp &&\nzigtsc main.ts output.c"} />
+            <CopyBlock command={"zigc init myapp-c &&\ncp output.c myapp-c/src/main.c &&\ncd myapp-c &&\nzigc build &&\nzigc run"} />
           </Section>
 
           <Section title="Compiler pipeline">
