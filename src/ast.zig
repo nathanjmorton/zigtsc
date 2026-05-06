@@ -57,8 +57,10 @@ pub const Node = struct {
 
     pub const Tag = enum {
         program, var_decl, func_decl, interface_decl, param, field,
+        class_decl, method_decl, constructor_decl,
         if_stmt, while_stmt, for_stmt, return_stmt, expr_stmt, block,
         binary_expr, unary_expr, call_expr, member_expr, index_expr, assign_expr,
+        new_expr, this_expr,
         number_lit, string_lit, bool_lit, identifier, array_lit, object_lit,
         type_name, type_array,
     };

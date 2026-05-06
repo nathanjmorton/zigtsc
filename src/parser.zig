@@ -54,6 +54,7 @@ pub const Parser = struct {
         return switch (self.current.tag) {
             .kw_function => self.parseFuncDecl(),
             .kw_interface => self.parseInterfaceDecl(),
+            .kw_class => self.parseClassDecl(),
             .kw_type => self.parseTypeAlias(),
             .kw_let, .kw_const => self.parseVarDecl(),
             else => self.parseStatement(),
@@ -111,6 +112,130 @@ pub const Parser = struct {
         return self.tree.addNode(.{
             .tag = .interface_decl,
             .data = .{ .lhs = packStringRef(name_ref), .rhs = extra_start },
+        });
+    }
+
+    /// Parses: class Name { field: Type; constructor(...) { } methodName(...): RetType { } }
+    /// Extra data layout: [field_count, field_nodes..., constructor_node, method_count, method_nodes...]
+    fn parseClassDecl(self: *Parser) !NodeIndex {
+        self.bump(); // consume 'class'
+        const name_ref = try self.expectIdentString();
+        try self.expect(.lbrace);
+
+        var fields: std.ArrayList(NodeIndex) = .empty;
+        defer fields.deinit(self.allocator);
+        var methods: std.ArrayList(NodeIndex) = .empty;
+        defer methods.deinit(self.allocator);
+        var constructor_node: NodeIndex = null_node;
+
+        while (self.current.tag != .rbrace and self.current.tag != .eof) {
+            // Check if this is the constructor
+            if (self.current.tag == .identifier and std.mem.eql(u8, self.current.slice(self.tree.source), "constructor")) {
+                constructor_node = try self.parseConstructorDecl();
+                continue;
+            }
+            // Peek ahead: if next token after identifier is '(' it's a method, otherwise a field
+            if (self.current.tag == .identifier) {
+                const saved_pos = self.lexer.pos;
+                const saved_current = self.current;
+                const saved_prev = self.prev;
+                self.bump(); // consume identifier
+                if (self.current.tag == .lparen) {
+                    // It's a method — restore and parse as method
+                    self.lexer.pos = saved_pos;
+                    self.current = saved_current;
+                    self.prev = saved_prev;
+                    try methods.append(self.allocator, try self.parseMethodDecl());
+                } else {
+                    // It's a field — restore and parse as field
+                    self.lexer.pos = saved_pos;
+                    self.current = saved_current;
+                    self.prev = saved_prev;
+                    try fields.append(self.allocator, try self.parseClassField());
+                }
+                continue;
+            }
+            // Skip unexpected tokens
+            self.bump();
+        }
+        try self.expect(.rbrace);
+
+        // Pack extra data: field_count, fields..., constructor_node, method_count, methods...
+        const extra_start = try self.tree.addExtra(@intCast(fields.items.len));
+        for (fields.items) |f| _ = try self.tree.addExtra(f);
+        _ = try self.tree.addExtra(constructor_node);
+        _ = try self.tree.addExtra(@intCast(methods.items.len));
+        for (methods.items) |m| _ = try self.tree.addExtra(m);
+
+        return self.tree.addNode(.{
+            .tag = .class_decl,
+            .data = .{ .lhs = packStringRef(name_ref), .rhs = extra_start },
+        });
+    }
+
+    /// Parses: fieldName: Type;
+    fn parseClassField(self: *Parser) !NodeIndex {
+        const fname = try self.expectIdentString();
+        try self.expect(.colon);
+        const ftype = try self.parseTypeAnnotation();
+        if (self.current.tag == .semicolon) self.bump();
+        return self.tree.addNode(.{
+            .tag = .field, .data = .{ .lhs = packStringRef(fname), .rhs = ftype },
+        });
+    }
+
+    /// Parses: constructor(params...) { body }
+    fn parseConstructorDecl(self: *Parser) !NodeIndex {
+        self.bump(); // consume 'constructor' identifier
+        try self.expect(.lparen);
+        var params: std.ArrayList(NodeIndex) = .empty;
+        defer params.deinit(self.allocator);
+        while (self.current.tag != .rparen and self.current.tag != .eof) {
+            const pname = try self.expectIdentString();
+            try self.expect(.colon);
+            const ptype = try self.parseTypeAnnotation();
+            try params.append(self.allocator, try self.tree.addNode(.{
+                .tag = .param, .data = .{ .lhs = packStringRef(pname), .rhs = ptype },
+            }));
+            if (self.current.tag == .comma) self.bump();
+        }
+        try self.expect(.rparen);
+        const body = try self.parseBlock();
+        // extra: param_count, param_nodes...
+        const extra_start = try self.tree.addExtra(@intCast(params.items.len));
+        for (params.items) |p| _ = try self.tree.addExtra(p);
+        return self.tree.addNode(.{
+            .tag = .constructor_decl,
+            .data = .{ .lhs = extra_start, .rhs = body },
+        });
+    }
+
+    /// Parses: methodName(params...): RetType { body }
+    fn parseMethodDecl(self: *Parser) !NodeIndex {
+        const name_ref = try self.expectIdentString();
+        try self.expect(.lparen);
+        var params: std.ArrayList(NodeIndex) = .empty;
+        defer params.deinit(self.allocator);
+        while (self.current.tag != .rparen and self.current.tag != .eof) {
+            const pname = try self.expectIdentString();
+            try self.expect(.colon);
+            const ptype = try self.parseTypeAnnotation();
+            try params.append(self.allocator, try self.tree.addNode(.{
+                .tag = .param, .data = .{ .lhs = packStringRef(pname), .rhs = ptype },
+            }));
+            if (self.current.tag == .comma) self.bump();
+        }
+        try self.expect(.rparen);
+        var ret_type: NodeIndex = null_node;
+        if (self.current.tag == .colon) { self.bump(); ret_type = try self.parseTypeAnnotation(); }
+        const body = try self.parseBlock();
+        // extra: ret_type, param_count, param_nodes...
+        const extra_start = try self.tree.addExtra(ret_type);
+        _ = try self.tree.addExtra(@intCast(params.items.len));
+        for (params.items) |p| _ = try self.tree.addExtra(p);
+        return self.tree.addNode(.{
+            .tag = .method_decl,
+            .data = .{ .lhs = packStringRef(name_ref), .rhs = body, .extra = extra_start },
         });
     }
 
@@ -309,12 +434,31 @@ pub const Parser = struct {
             .number_literal, .string_literal => { const ref = try self.tree.internString(self.current.slice(self.tree.source)); self.bump(); return self.tree.addNode(.{ .tag = if (self.prev.tag == .number_literal) .number_lit else .string_lit, .data = .{ .lhs = packStringRef(ref) } }); },
             .true_literal => { self.bump(); return self.tree.addNode(.{ .tag = .bool_lit, .data = .{ .lhs = 1 } }); },
             .false_literal => { self.bump(); return self.tree.addNode(.{ .tag = .bool_lit, .data = .{ .lhs = 0 } }); },
+            .kw_this => { self.bump(); return self.tree.addNode(.{ .tag = .this_expr, .data = .{} }); },
+            .kw_new => return self.parseNewExpr(),
             .identifier => { const ref = try self.tree.internString(self.current.slice(self.tree.source)); self.bump(); return self.tree.addNode(.{ .tag = .identifier, .data = .{ .lhs = packStringRef(ref) } }); },
             .lbracket => return self.parseArrayLiteral(),
             .lbrace => return self.parseObjectLiteral(),
             .lparen => { self.bump(); const expr = try self.parseExpression(); try self.expect(.rparen); return expr; },
             else => { try self.errors.append(self.allocator, .{ .msg = "unexpected token", .loc = self.current.loc }); self.bump(); return null_node; },
         }
+    }
+
+    /// Parses: new ClassName(args...)
+    fn parseNewExpr(self: *Parser) !NodeIndex {
+        self.bump(); // consume 'new'
+        const class_name = try self.expectIdentString();
+        try self.expect(.lparen);
+        var args: std.ArrayList(NodeIndex) = .empty;
+        defer args.deinit(self.allocator);
+        while (self.current.tag != .rparen and self.current.tag != .eof) {
+            try args.append(self.allocator, try self.parseExpression());
+            if (self.current.tag == .comma) self.bump();
+        }
+        try self.expect(.rparen);
+        const es = try self.tree.addExtra(@intCast(args.items.len));
+        for (args.items) |a| _ = try self.tree.addExtra(a);
+        return self.tree.addNode(.{ .tag = .new_expr, .data = .{ .lhs = packStringRef(class_name), .rhs = es } });
     }
 
     fn parseArrayLiteral(self: *Parser) !NodeIndex {

@@ -31,12 +31,64 @@ export function DocsPage() {
 
           <Section title="Usage">
             <CodeBlock lines={[
-              'zigtsc <input.ts>              # print C to stdout',
-              'zigtsc <input.ts> <output.c>   # write C to file',
+              'zigtsc <input.ts>                         # print C to stdout',
+              'zigtsc <input.ts> <output.c>              # write C to file',
+              'zigtsc <input.ts> -target js <output.js>  # transpile to JavaScript',
+              'zigtsc <input.ts> -target cpp <outdir/>   # C++ multi-file output',
             ]} />
             <P>
               zigtsc reads a <Code>.ts</Code> file, parses the TypeScript subset, type-checks it,
-              and emits idiomatic C. The generated C compiles with any standard C compiler.
+              and emits code in one of three targets: C (default), C++, or JavaScript.
+            </P>
+          </Section>
+
+          <Section title="Targets">
+            <H3>C (default)</H3>
+            <P>
+              Single-file output. Interfaces become <Code>typedef struct</Code>, functions map
+              directly, <Code>console.log</Code> becomes <Code>printf</Code>. Compile with
+              any C compiler: <Code>cc</Code>, <Code>gcc</Code>, <Code>zig cc</Code>.
+            </P>
+            <CodeBlock lines={[
+              'zigtsc fib.ts fib.c',
+              'cc -o fib fib.c && ./fib',
+            ]} />
+
+            <H3>JavaScript (-target js)</H3>
+            <P>
+              Strips all type annotations and emits clean JS. Interfaces are omitted (compile-time only).
+              Classes, <Code>this</Code>, and <Code>new</Code> emit directly as ES6 syntax.
+              <Code>console.log</Code> stays as-is.
+            </P>
+            <CodeBlock lines={[
+              'zigtsc counter.ts -target js counter.js',
+              'node counter.js',
+            ]} />
+
+            <H3>C++ (-target cpp)</H3>
+            <P>
+              Multi-file output. Each class emits a <Code>.h</Code>/<Code>.cpp</Code> pair with
+              <Code>#pragma once</Code>, scoped method implementations (<Code>ClassName::method()</Code>),
+              and <Code>this-&gt;</Code> for field access. Free functions and top-level code go in <Code>main.cpp</Code>.
+              Dependency-aware <Code>#include</Code>s are generated automatically.
+            </P>
+            <CodeBlock lines={[
+              'mkdir -p out && zigtsc counter.ts -target cpp out/',
+              'cd out && c++ -std=c++17 *.cpp -o main && ./main',
+            ]} />
+          </Section>
+
+          <Section title="Scaffold a project">
+            <P>
+              Use the init script to scaffold a starter project with a documented example file:
+            </P>
+            <CodeBlock lines={[
+              './init/zigtsc-init.sh myproject',
+              'zigtsc myproject/main.ts -target js myproject/output.js',
+            ]} />
+            <P>
+              This creates <Code>main.ts</Code> with interfaces, functions, classes, and top-level code —
+              covering every feature of the language subset.
             </P>
           </Section>
 
@@ -52,20 +104,24 @@ export function DocsPage() {
 
           <Section title="Compiler pipeline">
             <CodeBlock lines={[
-              'source.ts → Lexer → Tokens → Parser → AST → Type Checker → C Codegen → output.c',
+              'source.ts → Lexer → Tokens → Parser → AST → Checker →┬→ CodeGen    → output.c',
+              '                                                      ├→ CodeGenJS  → output.js',
+              '                                                      └→ CodeGenCpp → .h/.cpp files',
             ]} />
-            <P>Each stage is a separate Zig source file with clear input/output boundaries.</P>
+            <P>Each stage is a separate Zig source file. Parser and checker are shared across all targets.</P>
             {[
-              ['token.zig', 'Token type definitions — keywords, operators, literals, punctuation'],
+              ['token.zig', 'Token definitions — keywords (including class/new/this), operators, literals'],
               ['lexer.zig', 'Tokenizer with comment skipping, string/number/identifier support'],
-              ['ast.zig', 'AST node definitions with packed string refs and extra data array'],
-              ['parser.zig', 'Recursive descent parser with precedence climbing for expressions'],
-              ['checker.zig', 'Type checker with scoped symbol table, struct and function registration'],
-              ['codegen.zig', 'C emitter — interface→struct, console.log→printf, type-driven output'],
-              ['main.zig', 'CLI entry point'],
+              ['ast.zig', 'AST node definitions — class_decl, method_decl, constructor_decl, new_expr, this_expr'],
+              ['parser.zig', 'Recursive descent parser with class/method/constructor/new/this support'],
+              ['checker.zig', 'Type checker — scoped symbols, ClassDef, class_t type, this binding'],
+              ['codegen.zig', 'C emitter — interface→struct, console.log→printf (legacy single-file)'],
+              ['codegen_js.zig', 'JS emitter — strips types, classes→ES6 classes, interfaces omitted'],
+              ['codegen_cpp.zig', 'C++ emitter — multi-file .h/.cpp per class, this→this->, dependency includes'],
+              ['main.zig', 'CLI entry point with -target flag routing'],
             ].map(([file, desc]) => (
               <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
-                <code mix={css({ fontSize: '13px', color: 'var(--accent)', whiteSpace: 'nowrap', minWidth: '120px' })}>{file}</code>
+                <code mix={css({ fontSize: '13px', color: 'var(--accent)', whiteSpace: 'nowrap', minWidth: '140px' })}>{file}</code>
                 <span mix={css({ fontSize: '13px', color: 'var(--text-secondary)' })}>{desc}</span>
               </div>
             ))}
@@ -82,7 +138,8 @@ export function DocsPage() {
               ['f32', 'float'],
               ['f64', 'double'],
               ['T[]', 'double* (simplified)'],
-              ['interface Foo { ... }', 'typedef struct { ... } Foo;'],
+              ['interface Foo { ... }', 'typedef struct / C++ struct'],
+              ['class Foo { ... }', 'C++ class with .h/.cpp pair'],
             ].map(([ts, c]) => (
               <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
                 <code mix={css({ fontSize: '13px', color: 'var(--text-primary)', minWidth: '220px' })}>{ts}</code>
@@ -94,8 +151,8 @@ export function DocsPage() {
           <Section title="Supported syntax">
             <H3>Variables</H3>
             <CodeBlock lines={[
-              'let x: number = 42;          → double x = 42;',
-              'const msg: string = "hi";    → const char* msg = "hi";',
+              'let x: number = 42;          → double x = 42;       (C)',
+              'const msg: string = "hi";    → const msg = "hi";    (JS)',
             ]} />
 
             <H3>Functions</H3>
@@ -104,48 +161,66 @@ export function DocsPage() {
               '    return a + b;',
               '}',
               '',
-              '→ double add(double a, double b) {',
-              '      return (a + b);',
-              '  }',
+              '→ C:   double add(double a, double b) { return (a + b); }',
+              '→ JS:  function add(a, b) { return (a + b); }',
+              '→ C++: double add(double a, double b) { return (a + b); }  (in main.cpp)',
             ]} />
 
-            <H3>Interfaces → Structs</H3>
+            <H3>Interfaces</H3>
             <CodeBlock lines={[
-              'interface Point {              → typedef struct {',
-              '    x: number;                       double x;',
-              '    y: number;                       double y;',
-              '}                              } Point;',
+              'interface Point { x: number; y: number; }',
+              '',
+              '→ C:   typedef struct { double x; double y; } Point;',
+              '→ JS:  (omitted — compile-time only)',
+              '→ C++: struct Point { double x; double y; };',
+            ]} />
+
+            <H3>Classes (Go-style, no inheritance)</H3>
+            <CodeBlock lines={[
+              'class Counter {',
+              '    value: i32;',
+              '    constructor(init: i32) { this.value = init; }',
+              '    increment(): void { this.value = this.value + 1; }',
+              '    getVal(): i32 { return this.value; }',
+              '}',
+              'const c = new Counter(10);',
+              '',
+              '→ JS:  class Counter { constructor(init) { ... } ... }',
+              '→ C++: Counter.h + Counter.cpp (separate files)',
+              '        Counter::Counter(int32_t init) { this->value = init; }',
             ]} />
 
             <H3>Control flow</H3>
             <P>
               <Code>if</Code> / <Code>else if</Code> / <Code>else</Code>, <Code>while</Code>,{' '}
-              <Code>for</Code> (C-style 3-part), <Code>return</Code> — all map directly to their C equivalents.
+              <Code>for</Code> (C-style 3-part), <Code>return</Code> — all map directly to their target equivalents.
             </P>
 
             <H3>Expressions</H3>
             <P>
               Arithmetic (<Code>+ - * / %</Code>), comparison (<Code>{'< > <= >= == != === !=='}</Code>),
               logical (<Code>{'&& || !'}</Code>), assignment (<Code>= += -= *= /=</Code>),
-              function calls, member access (<Code>a.b</Code>), index access (<Code>a[i]</Code>).
+              function calls, member access (<Code>a.b</Code> / <Code>this.x</Code>),
+              index access (<Code>a[i]</Code>), <Code>new ClassName(args)</Code>.
             </P>
 
             <H3>console.log</H3>
             <P>
-              <Code>console.log(x)</Code> is transpiled to <Code>printf()</Code> with format strings
-              inferred from types: <Code>%g</Code> for numbers, <Code>%s</Code> for strings,{' '}
-              <Code>%d</Code> for booleans.
+              In C/C++ targets: transpiled to <Code>printf()</Code> with format strings inferred from types.
+              In JS target: stays as <Code>console.log()</Code>.
             </P>
           </Section>
 
           <Section title="Explicitly excluded">
-            <P>These TypeScript features are intentionally unsupported for clean C mapping:</P>
+            <P>These TypeScript features are intentionally unsupported:</P>
             <ul mix={css({ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.8, color: 'var(--text-secondary)' })}>
-              <li><Code>class</Code>, <Code>this</Code>, prototypes</li>
+              <li>Inheritance / <Code>extends</Code></li>
+              <li>Static fields/methods</li>
               <li>Closures / capturing nested functions</li>
               <li><Code>async</Code> / <Code>await</Code>, Promises</li>
               <li>Generics, union types, <Code>any</Code>, <Code>unknown</Code></li>
               <li>Decorators, destructuring, spread, optional chaining</li>
+              <li>Getters/setters, access modifiers</li>
               <li><Code>eval</Code>, <Code>new Function()</Code></li>
             </ul>
           </Section>
@@ -154,12 +229,13 @@ export function DocsPage() {
             <P>
               Stack allocation by default for scalars and small structs. Arrays are heap-allocated
               with <Code>malloc</Code> — the caller is responsible for <Code>free</Code>. There is no
-              garbage collector. The language is explicitly manual-memory, like C itself.
+              garbage collector. The C/C++ targets are explicitly manual-memory.
+              The JS target inherits the JS runtime's GC.
             </P>
           </Section>
 
           <Section title="Examples">
-            <P>Three example programs are included in the <Code>examples/</Code> directory:</P>
+            <P>Four example programs are included in the <Code>examples/</Code> directory:</P>
 
             <H3>hello.ts</H3>
             <CodeBlock lines={[
@@ -191,13 +267,40 @@ export function DocsPage() {
               'const p2: Point = { x: 3, y: 4 };',
               'console.log(distance(p1, p2));',
             ]} />
+
+            <H3>counter.ts (classes)</H3>
+            <CodeBlock lines={[
+              'class Counter {',
+              '    value: i32;',
+              '    step: i32;',
+              '    constructor(init: i32, step: i32) {',
+              '        this.value = init;',
+              '        this.step = step;',
+              '    }',
+              '    increment(): void { this.value = this.value + this.step; }',
+              '    getVal(): i32 { return this.value; }',
+              '}',
+              '',
+              'const c = new Counter(0, 5);',
+              'c.increment();',
+              'c.increment();',
+              'c.increment();',
+              'console.log(c.getVal());',
+            ]} />
+
+            <H3>Try all three targets</H3>
+            <CodeBlock lines={[
+              'zigtsc examples/counter.ts -target js counter.js && node counter.js',
+              'mkdir -p out && zigtsc examples/counter.ts -target cpp out/',
+              'zigtsc examples/fib.ts fib.c && cc -o fib fib.c && ./fib',
+            ]} />
           </Section>
 
           <Section title="Running tests">
             <CodeBlock lines={['zig build test --summary all']} />
             <P>
-              The test suite includes 13 tests covering the lexer, parser, and end-to-end codegen.
-              All tests pass with zero memory leaks.
+              The test suite includes 22 tests covering the lexer, parser, checker, C codegen,
+              JS codegen, and C++ codegen. All tests pass with zero memory leaks.
             </P>
           </Section>
 

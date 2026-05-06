@@ -12,10 +12,10 @@ export function HomePage() {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
-        <title>zigtsc — TypeScript subset → C transpiler</title>
+        <title>zigtsc — TypeScript subset → C / C++ / JS compiler</title>
         <meta
           name="description"
-          content="A compiler written in Zig that transpiles a strict subset of TypeScript directly to idiomatic C. No Wasm intermediate, no runtime."
+          content="A compiler written in Zig that transpiles a strict subset of TypeScript to C, C++, and JavaScript. No Wasm intermediate, no runtime."
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -75,12 +75,13 @@ function Hero() {
           '@media (max-width: 600px)': { fontSize: '15px' },
         })}
       >
-        A compiler written in Zig that transpiles a strict subset of TypeScript directly to
-        idiomatic C. No Wasm intermediate. No runtime. Just clean C output.
+        A compiler written in Zig that transpiles a strict subset of TypeScript to C, C++, and
+        JavaScript. Classes, interfaces, type-checked. Three targets from one source.
       </p>
       <div mix={css({ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' })}>
         <Tag>TypeScript syntax</Tag>
-        <Tag>→ C output</Tag>
+        <Tag>→ C / C++ / JS</Tag>
+        <Tag>Go-style classes</Tag>
         <Tag>Written in Zig</Tag>
       </div>
       <CopyBlock
@@ -214,12 +215,12 @@ function CodePanel() {
 // ── Features ─────────────────────────────────────────────────────────────────
 
 const FEATURES: Array<{ title: string; desc: string }> = [
-  { title: 'Direct TS → C', desc: 'No Wasm intermediate like Porffor. Generates idiomatic, readable C you can inspect and modify.' },
+  { title: 'Three targets', desc: 'One source file → C, C++, or JavaScript. Use -target c, -target cpp, or -target js.' },
+  { title: 'Go-style classes', desc: 'Classes with constructors, methods, and this. No inheritance. C++ target emits .h/.cpp pairs per class.' },
   { title: 'Written in Zig', desc: 'Fast compiler with zero runtime dependencies. Single binary, cross-platform.' },
-  { title: 'Type-driven codegen', desc: 'number → double, boolean → bool, string → const char*, interface → typedef struct.' },
-  { title: 'console.log → printf', desc: 'Format strings inferred from types. Strings use %s, numbers use %g, booleans use %d.' },
-  { title: 'Explicit subset', desc: 'No classes, closures, async, generics, or eval. Designed constraints for clean C mapping.' },
-  { title: 'Pairs with zigc', desc: 'Output .c files can be built with zigc, zig cc, gcc, or clang. Full C toolchain compatibility.' },
+  { title: 'Type-driven codegen', desc: 'number → double, boolean → bool, string → const char*, interface → struct, class → C++ class.' },
+  { title: 'console.log → printf', desc: 'Format strings inferred from types in C/C++. Stays as console.log in JS output.' },
+  { title: 'Pairs with zigc', desc: 'Output .c/.cpp files can be built with zigc, zig cc, gcc, g++, or clang. Full toolchain compatibility.' },
 ]
 
 function Features() {

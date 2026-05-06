@@ -5,6 +5,8 @@ const Lexer = @import("lexer.zig").Lexer;
 const Parser = @import("parser.zig").Parser;
 const Checker = @import("checker.zig").Checker;
 const CodeGen = @import("codegen.zig").CodeGen;
+const CodeGenJS = @import("codegen_js.zig").CodeGenJS;
+const CodeGenCpp = @import("codegen_cpp.zig").CodeGenCpp;
 const ast_mod = @import("ast.zig");
 const null_node = ast_mod.null_node;
 
@@ -214,4 +216,275 @@ test "e2e interface to struct" {
     try testing.expect(std.mem.indexOf(u8, c_out, "double x;") != null);
     try testing.expect(std.mem.indexOf(u8, c_out, "double y;") != null);
     try testing.expect(std.mem.indexOf(u8, c_out, "} Point;") != null);
+}
+
+// ── Class parsing tests ─────────────────────────────────────────────────
+
+test "parse class decl" {
+    const allocator = testing.allocator;
+    const source =
+        \\class Counter {
+        \\    value: number;
+        \\    constructor(init: number) {
+        \\        this.value = init;
+        \\    }
+        \\    increment(): void {
+        \\        this.value = this.value + 1;
+        \\    }
+        \\    getVal(): number {
+        \\        return this.value;
+        \\    }
+        \\}
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+    try testing.expect(root != null_node);
+}
+
+test "parse new expr" {
+    const allocator = testing.allocator;
+    const source =
+        \\class Foo { x: number; }
+        \\const f = new Foo();
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    _ = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+}
+
+// ── Checker class tests ─────────────────────────────────────────────────
+
+test "check class decl" {
+    const allocator = testing.allocator;
+    const source =
+        \\class Point {
+        \\    x: number;
+        \\    y: number;
+        \\    constructor(x: number, y: number) {
+        \\        this.x = x;
+        \\        this.y = y;
+        \\    }
+        \\    distFromOrigin(): number {
+        \\        return this.x + this.y;
+        \\    }
+        \\}
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+
+    var checker = Checker.init(&parser.tree, allocator);
+    defer checker.deinit();
+    try checker.check(root);
+
+    // Should have registered one class
+    try testing.expectEqual(@as(usize, 1), checker.classes.items.len);
+    try testing.expectEqualStrings("Point", checker.classes.items[0].name);
+    try testing.expectEqual(@as(usize, 2), checker.classes.items[0].fields.len);
+    try testing.expectEqual(@as(usize, 1), checker.classes.items[0].methods.len);
+    try testing.expectEqual(@as(usize, 2), checker.classes.items[0].constructor_params.len);
+}
+
+// ── JS codegen tests ────────────────────────────────────────────────────
+
+test "e2e js hello world" {
+    const allocator = testing.allocator;
+    const source =
+        \\const message: string = "hello world";
+        \\console.log(message);
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+
+    var codegen = CodeGenJS.init(&parser.tree, allocator);
+    defer codegen.deinit();
+    const js_out = try codegen.generate(root);
+
+    try testing.expect(std.mem.indexOf(u8, js_out, "const message = \"hello world\";") != null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "console.log(message);") != null);
+    // Should NOT contain type annotations
+    try testing.expect(std.mem.indexOf(u8, js_out, ": string") == null);
+}
+
+test "e2e js function" {
+    const allocator = testing.allocator;
+    const source =
+        \\function add(a: number, b: number): number {
+        \\    return a + b;
+        \\}
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+
+    var codegen = CodeGenJS.init(&parser.tree, allocator);
+    defer codegen.deinit();
+    const js_out = try codegen.generate(root);
+
+    try testing.expect(std.mem.indexOf(u8, js_out, "function add(a, b)") != null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "return (a + b);") != null);
+    // No type annotations
+    try testing.expect(std.mem.indexOf(u8, js_out, ": number") == null);
+}
+
+test "e2e js class" {
+    const allocator = testing.allocator;
+    const source =
+        \\class Counter {
+        \\    value: number;
+        \\    constructor(init: number) {
+        \\        this.value = init;
+        \\    }
+        \\    increment(): void {
+        \\        this.value = this.value + 1;
+        \\    }
+        \\}
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+
+    var codegen = CodeGenJS.init(&parser.tree, allocator);
+    defer codegen.deinit();
+    const js_out = try codegen.generate(root);
+
+    try testing.expect(std.mem.indexOf(u8, js_out, "class Counter {") != null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "constructor(init)") != null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "this.value = init;") != null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "increment()") != null);
+}
+
+test "e2e js interface omitted" {
+    const allocator = testing.allocator;
+    const source =
+        \\interface Point { x: number; y: number; }
+        \\const p: number = 42;
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+
+    var codegen = CodeGenJS.init(&parser.tree, allocator);
+    defer codegen.deinit();
+    const js_out = try codegen.generate(root);
+
+    // Interface should be omitted
+    try testing.expect(std.mem.indexOf(u8, js_out, "interface") == null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "Point") == null);
+    try testing.expect(std.mem.indexOf(u8, js_out, "const p = 42;") != null);
+}
+
+// ── C++ codegen tests ───────────────────────────────────────────────────
+
+test "e2e cpp class multi-file" {
+    const allocator = testing.allocator;
+    const source =
+        \\class Counter {
+        \\    value: i32;
+        \\    constructor(init: i32) {
+        \\        this.value = init;
+        \\    }
+        \\    getVal(): i32 {
+        \\        return this.value;
+        \\    }
+        \\}
+        \\const c = new Counter(10);
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+
+    var checker = Checker.init(&parser.tree, allocator);
+    defer checker.deinit();
+    try checker.check(root);
+
+    var codegen = CodeGenCpp.init(&parser.tree, &checker, allocator);
+    defer codegen.deinit();
+    const files = try codegen.generate(root);
+    defer allocator.free(files);
+
+    // Should produce 3 files: Counter.h, Counter.cpp, main.cpp
+    try testing.expectEqual(@as(usize, 3), files.len);
+    try testing.expectEqualStrings("Counter.h", files[0].name);
+    try testing.expectEqualStrings("Counter.cpp", files[1].name);
+    try testing.expectEqualStrings("main.cpp", files[2].name);
+
+    // Header checks
+    const header = files[0].content;
+    try testing.expect(std.mem.indexOf(u8, header, "#pragma once") != null);
+    try testing.expect(std.mem.indexOf(u8, header, "class Counter {") != null);
+    try testing.expect(std.mem.indexOf(u8, header, "int32_t value;") != null);
+    try testing.expect(std.mem.indexOf(u8, header, "Counter(int32_t init);") != null);
+    try testing.expect(std.mem.indexOf(u8, header, "int32_t getVal();") != null);
+
+    // Impl checks
+    const impl = files[1].content;
+    try testing.expect(std.mem.indexOf(u8, impl, "#include \"Counter.h\"") != null);
+    try testing.expect(std.mem.indexOf(u8, impl, "Counter::Counter(") != null);
+    try testing.expect(std.mem.indexOf(u8, impl, "Counter::getVal()") != null);
+    try testing.expect(std.mem.indexOf(u8, impl, "this->value") != null);
+
+    // Main checks
+    const main_file = files[2].content;
+    try testing.expect(std.mem.indexOf(u8, main_file, "#include \"Counter.h\"") != null);
+    try testing.expect(std.mem.indexOf(u8, main_file, "int main()") != null);
+    try testing.expect(std.mem.indexOf(u8, main_file, "new Counter(10)") != null);
+
+    // Free allocated content
+    for (files) |file| {
+        allocator.free(file.name);
+        allocator.free(file.content);
+    }
+}
+
+test "e2e cpp free functions in main" {
+    const allocator = testing.allocator;
+    const source =
+        \\function add(a: number, b: number): number {
+        \\    return a + b;
+        \\}
+        \\console.log(add(1, 2));
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+
+    var checker = Checker.init(&parser.tree, allocator);
+    defer checker.deinit();
+    try checker.check(root);
+
+    var codegen = CodeGenCpp.init(&parser.tree, &checker, allocator);
+    defer codegen.deinit();
+    const files = try codegen.generate(root);
+    defer allocator.free(files);
+
+    // No classes → just main.cpp
+    try testing.expectEqual(@as(usize, 1), files.len);
+    try testing.expectEqualStrings("main.cpp", files[0].name);
+
+    const main_file = files[0].content;
+    try testing.expect(std.mem.indexOf(u8, main_file, "double add(double a, double b)") != null);
+    try testing.expect(std.mem.indexOf(u8, main_file, "int main()") != null);
+    try testing.expect(std.mem.indexOf(u8, main_file, "printf(") != null);
+
+    for (files) |file| {
+        allocator.free(file.name);
+        allocator.free(file.content);
+    }
 }
