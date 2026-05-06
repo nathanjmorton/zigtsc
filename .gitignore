@@ -4,3 +4,5 @@ zig-pkg/
 www/node_modules/
 www/.vercel/
 www/.env.local
+.vercel
+.env*.local
