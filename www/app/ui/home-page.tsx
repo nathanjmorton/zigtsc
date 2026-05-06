@@ -89,8 +89,12 @@ function Hero() {
         display={"brew install nathanjmorton/zigtsc/zigtsc"}
       />
       <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
-        or <code mix={css({ fontSize: '12px' })}>curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash</code>
+        or
       </p>
+      <CopyBlock
+        command={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
+        display={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
+      />
       <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
         macOS · Linux · arm64 / x86_64{' '}
         ·{' '}
@@ -281,34 +285,23 @@ function QuickStart() {
   return () => (
     <section aria-label="Quick start" mix={css({ width: '100%' })}>
       <h2 mix={css(sectionHeadingStyles)}>Quick start</h2>
-      <div
-        mix={css({
-          background: 'var(--surface-3)',
-          borderRadius: '16px',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
-        })}
-      >
-        {[
-          'brew install nathanjmorton/zigtsc/zigtsc',
-          'zigtsc init myapp && cd myapp',
-          'zigtsc main.ts -target js output.js && node output.js',
-          'zigtsc main.ts output.c && zigc init app && cp output.c app/src/main.c && cd app && zigc run',
-        ].map((line) => (
-          <code
-            mix={css({
-              display: 'block',
-              fontSize: '13px',
-              lineHeight: 1.8,
-              color: 'var(--text-primary)',
-              '&::before': { content: '"$ "', color: 'var(--text-tertiary)' },
-            })}
-          >
-            {line}
-          </code>
-        ))}
+      <div mix={css({ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' })}>
+        <CopyBlock
+          command={"brew install nathanjmorton/zigtsc/zigtsc"}
+          display={"brew install nathanjmorton/zigtsc/zigtsc"}
+        />
+        <CopyBlock
+          command={"zigtsc init myapp && cd myapp"}
+          display={"zigtsc init myapp && cd myapp"}
+        />
+        <CopyBlock
+          command={"zigtsc main.ts -target js output.js && node output.js"}
+          display={"zigtsc main.ts -target js output.js && node output.js"}
+        />
+        <CopyBlock
+          command={"zigtsc main.ts output.c"}
+          display={"zigtsc main.ts output.c"}
+        />
       </div>
       <p
         mix={css({
