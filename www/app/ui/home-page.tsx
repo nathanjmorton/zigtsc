@@ -85,16 +85,12 @@ function Hero() {
         <Tag>Written in Zig</Tag>
       </div>
       <CopyBlock
-        command={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
-        display={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
+        command={"brew install nathanjmorton/zigtsc/zigtsc"}
+        display={"brew install nathanjmorton/zigtsc/zigtsc"}
       />
       <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
-        or
+        or <code mix={css({ fontSize: '12px' })}>curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash</code>
       </p>
-      <CopyBlock
-        command={"brew tap nathanjmorton/zigtsc && brew install zigtsc"}
-        display={"brew tap nathanjmorton/zigtsc && brew install zigtsc"}
-      />
       <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
         macOS · Linux · arm64 / x86_64{' '}
         ·{' '}
@@ -296,10 +292,10 @@ function QuickStart() {
         })}
       >
         {[
-          'curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash',
-          'zigtsc examples/fib.ts fib.c',
-          'zigc init fib-app && cp fib.c fib-app/src/main.c',
-          'cd fib-app && zigc run',
+          'brew install nathanjmorton/zigtsc/zigtsc',
+          'zigtsc init myapp && cd myapp',
+          'zigtsc main.ts -target js output.js && node output.js',
+          'zigtsc main.ts output.c && zigc init app && cp output.c app/src/main.c && cd app && zigc run',
         ].map((line) => (
           <code
             mix={css({

@@ -43,10 +43,9 @@ export function DocsPage() {
           </Section>
 
           <Section title="Install">
-            <H3>Homebrew</H3>
+            <H3>Homebrew (recommended)</H3>
             <CodeBlock lines={[
-              'brew tap nathanjmorton/zigtsc',
-              'brew install zigtsc',
+              'brew install nathanjmorton/zigtsc/zigtsc',
             ]} />
             <P>
               Upgrade via Homebrew: <Code>brew upgrade zigtsc</Code>.
@@ -119,17 +118,34 @@ export function DocsPage() {
           </Section>
 
           <Section title="Scaffold a project">
-            <P>
-              Use the init script to scaffold a starter project with a documented example file:
-            </P>
             <CodeBlock lines={[
-              './init/zigtsc-init.sh myproject',
-              'zigtsc myproject/main.ts -target js myproject/output.js',
+              'zigtsc init myapp',
+              'cd myapp',
             ]} />
             <P>
-              This creates <Code>main.ts</Code> with interfaces, functions, classes, and top-level code —
-              covering every feature of the language subset.
+              Creates <Code>main.ts</Code> with interfaces, functions, classes, and top-level code —
+              covering every feature of the language subset. Then transpile:
             </P>
+            <CodeBlock lines={[
+              'zigtsc main.ts -target js output.js      # JavaScript',
+              'zigtsc main.ts -target cpp out/           # C++ multi-file',
+              'zigtsc main.ts output.c                   # C single-file',
+            ]} />
+          </Section>
+
+          <Section title="Command reference">
+            {[
+              ['zigtsc init [dir]', 'Scaffold a new project with a starter main.ts'],
+              ['zigtsc <file.ts> [output]', 'Transpile to C (default target)'],
+              ['zigtsc <file.ts> -target js [output]', 'Transpile to JavaScript'],
+              ['zigtsc <file.ts> -target cpp [outdir]', 'Transpile to C++ (multi-file)'],
+              ['zigtsc help', 'Print help message'],
+            ].map(([cmd, desc]) => (
+              <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
+                <code mix={css({ fontSize: '13px', color: 'var(--text-primary)', minWidth: '280px', whiteSpace: 'nowrap' })}>{cmd}</code>
+                <span mix={css({ fontSize: '13px', color: 'var(--text-secondary)' })}>{desc}</span>
+              </div>
+            ))}
           </Section>
 
           <Section title="Compiler pipeline">
