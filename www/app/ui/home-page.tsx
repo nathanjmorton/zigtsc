@@ -285,24 +285,10 @@ function QuickStart() {
   return () => (
     <section aria-label="Quick start" mix={css({ width: '100%' })}>
       <h2 mix={css(sectionHeadingStyles)}>Quick start</h2>
-      <div mix={css({ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' })}>
-        <CopyBlock
-          command={"brew install nathanjmorton/zigtsc/zigtsc"}
-          display={"brew install nathanjmorton/zigtsc/zigtsc"}
-        />
-        <CopyBlock
-          command={"zigtsc init myapp && cd myapp"}
-          display={"zigtsc init myapp && cd myapp"}
-        />
-        <CopyBlock
-          command={"zigtsc main.ts -target js output.js && node output.js"}
-          display={"zigtsc main.ts -target js output.js && node output.js"}
-        />
-        <CopyBlock
-          command={"zigtsc main.ts output.c"}
-          display={"zigtsc main.ts output.c"}
-        />
-      </div>
+      <CopyBlock
+        command={"zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"}
+        display={"zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"}
+      />
       <p
         mix={css({
           marginTop: '16px',
