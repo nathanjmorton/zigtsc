@@ -42,16 +42,53 @@ export function DocsPage() {
             </P>
           </Section>
 
+          <Section title="Install">
+            <H3>Homebrew</H3>
+            <CodeBlock lines={[
+              'brew tap nathanjmorton/zigtsc',
+              'brew install zigtsc',
+            ]} />
+            <P>
+              Upgrade via Homebrew: <Code>brew upgrade zigtsc</Code>.
+            </P>
+
+            <H3>Shell script</H3>
+            <CodeBlock lines={[
+              'curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash',
+            ]} />
+            <P>
+              The installer detects your platform (macOS/Linux, arm64/x86_64), downloads the correct binary
+              from GitHub releases, and places it at <Code>~/.zigtsc/bin/zigtsc</Code>. It also
+              adds <Code>ZIGTSC_INSTALL</Code> and updates your <Code>PATH</Code> in your shell config.
+            </P>
+            <P>
+              To install a specific version:
+            </P>
+            <CodeBlock lines={[
+              'curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash -s v0.1.0',
+            ]} />
+
+            <H3>Build from source</H3>
+            <CodeBlock lines={[
+              'git clone https://github.com/nathanjmorton/zigtsc',
+              'cd zigtsc',
+              'zig build -Doptimize=ReleaseFast',
+              'export PATH="$PWD/zig-out/bin:$PATH"',
+            ]} />
+            <P>Requires <A href="https://ziglang.org/download/">Zig 0.16.0</A>.</P>
+          </Section>
+
           <Section title="Targets">
             <H3>C (default)</H3>
             <P>
               Single-file output. Interfaces become <Code>typedef struct</Code>, functions map
-              directly, <Code>console.log</Code> becomes <Code>printf</Code>. Compile with
-              any C compiler: <Code>cc</Code>, <Code>gcc</Code>, <Code>zig cc</Code>.
+              directly, <Code>console.log</Code> becomes <Code>printf</Code>. Compile with{' '}
+              <A href="https://zigc.nathanjmorton.com">zigc</A>.
             </P>
             <CodeBlock lines={[
               'zigtsc fib.ts fib.c',
-              'cc -o fib fib.c && ./fib',
+              'zigc init fib-app && cp fib.c fib-app/src/main.c',
+              'cd fib-app && zigc run',
             ]} />
 
             <H3>JavaScript (-target js)</H3>
@@ -71,10 +108,13 @@ export function DocsPage() {
               <Code>#pragma once</Code>, scoped method implementations (<Code>ClassName::method()</Code>),
               and <Code>this-&gt;</Code> for field access. Free functions and top-level code go in <Code>main.cpp</Code>.
               Dependency-aware <Code>#include</Code>s are generated automatically.
+              Compile with <A href="https://zigc.nathanjmorton.com">zigc</A>.
             </P>
             <CodeBlock lines={[
               'mkdir -p out && zigtsc counter.ts -target cpp out/',
-              'cd out && c++ -std=c++17 *.cpp -o main && ./main',
+              'zigc init counter-app --cpp',
+              'cp out/*.h out/*.cpp counter-app/src/',
+              'cd counter-app && zigc run',
             ]} />
           </Section>
 
@@ -90,16 +130,6 @@ export function DocsPage() {
               This creates <Code>main.ts</Code> with interfaces, functions, classes, and top-level code —
               covering every feature of the language subset.
             </P>
-          </Section>
-
-          <Section title="Build from source">
-            <CodeBlock lines={[
-              'git clone https://github.com/nathanjmorton/zigtsc',
-              'cd zigtsc',
-              'zig build -Doptimize=ReleaseFast',
-              'export PATH="$PWD/zig-out/bin:$PATH"',
-            ]} />
-            <P>Requires <A href="https://ziglang.org/download/">Zig 0.16.0</A>.</P>
           </Section>
 
           <Section title="Compiler pipeline">
@@ -290,9 +320,18 @@ export function DocsPage() {
 
             <H3>Try all three targets</H3>
             <CodeBlock lines={[
+              '# JavaScript',
               'zigtsc examples/counter.ts -target js counter.js && node counter.js',
+              '',
+              '# C++ (multi-file)',
               'mkdir -p out && zigtsc examples/counter.ts -target cpp out/',
-              'zigtsc examples/fib.ts fib.c && cc -o fib fib.c && ./fib',
+              'zigc init counter-app --cpp && cp out/*.h out/*.cpp counter-app/src/',
+              'cd counter-app && zigc run',
+              '',
+              '# C (single-file)',
+              'zigtsc examples/fib.ts fib.c',
+              'zigc init fib-app && cp fib.c fib-app/src/main.c',
+              'cd fib-app && zigc run',
             ]} />
           </Section>
 

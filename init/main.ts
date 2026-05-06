@@ -8,10 +8,10 @@
 //   zigtsc main.ts -target js output.js    # JavaScript output
 //   zigtsc main.ts -target cpp out/        # C++ multi-file output
 //
-// Then compile/run:
-//   cc -o main output.c && ./main          # C
-//   node output.js                         # JavaScript
-//   cd out && c++ -std=c++17 *.cpp -o main && ./main  # C++
+// Then compile/run with zigc (https://zigc.nathanjmorton.com):
+//   zigc init myapp && cp output.c myapp/src/main.c && cd myapp && zigc run     # C
+//   node output.js                                                               # JavaScript
+//   zigc init myapp --cpp && cp out/*.h out/*.cpp myapp/src/ && cd myapp && zigc run  # C++
 
 // ── Interfaces ──────────────────────────────────────────────────────────
 // Interfaces compile to C structs, are omitted in JS output,

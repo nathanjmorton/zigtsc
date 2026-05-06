@@ -85,14 +85,18 @@ function Hero() {
         <Tag>Written in Zig</Tag>
       </div>
       <CopyBlock
-        command={"git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast"}
-        display={"git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast"}
+        command={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
+        display={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
       />
       <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
-        Requires{' '}
-        <a href="https://ziglang.org/download/" mix={css(linkStyles)}>
-          Zig 0.16.0
-        </a>{' '}
+        or
+      </p>
+      <CopyBlock
+        command={"brew tap nathanjmorton/zigtsc && brew install zigtsc"}
+        display={"brew tap nathanjmorton/zigtsc && brew install zigtsc"}
+      />
+      <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
+        macOS · Linux · arm64 / x86_64{' '}
         ·{' '}
         <a href="https://github.com/nathanjmorton/zigtsc" mix={css(linkStyles)}>
           GitHub
@@ -100,6 +104,10 @@ function Hero() {
         ·{' '}
         <a href={routes.docs.href()} mix={css(linkStyles)}>
           Docs
+        </a>{' '}
+        ·{' '}
+        <a href="https://zigc.nathanjmorton.com" mix={css(linkStyles)}>
+          zigc
         </a>
       </p>
     </section>
@@ -220,7 +228,7 @@ const FEATURES: Array<{ title: string; desc: string }> = [
   { title: 'Written in Zig', desc: 'Fast compiler with zero runtime dependencies. Single binary, cross-platform.' },
   { title: 'Type-driven codegen', desc: 'number → double, boolean → bool, string → const char*, interface → struct, class → C++ class.' },
   { title: 'console.log → printf', desc: 'Format strings inferred from types in C/C++. Stays as console.log in JS output.' },
-  { title: 'Pairs with zigc', desc: 'Output .c/.cpp files can be built with zigc, zig cc, gcc, g++, or clang. Full toolchain compatibility.' },
+  { title: 'Built for zigc', desc: 'Transpile with zigtsc, compile with zigc. zigc build handles C and C++ output. Full native + WASM pipeline.' },
 ]
 
 function Features() {
@@ -288,10 +296,10 @@ function QuickStart() {
         })}
       >
         {[
-          'git clone https://github.com/nathanjmorton/zigtsc',
-          'cd zigtsc && zig build -Doptimize=ReleaseFast',
-          './zig-out/bin/zigtsc examples/fib.ts fib.c',
-          'cc -o fib fib.c && ./fib',
+          'curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash',
+          'zigtsc examples/fib.ts fib.c',
+          'zigc init fib-app && cp fib.c fib-app/src/main.c',
+          'cd fib-app && zigc run',
         ].map((line) => (
           <code
             mix={css({
