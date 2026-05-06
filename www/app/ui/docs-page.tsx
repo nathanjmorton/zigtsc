@@ -20,6 +20,7 @@ export function DocsPage() {
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
         />
         <script type="module" src={routes.assets.href({ path: 'app/assets/entry.ts' })}></script>
+        <script>{COPY_SCRIPT}</script>
       </head>
       <body mix={css(bodyStyles)}>
         <nav mix={css(navStyles)}>
@@ -29,108 +30,23 @@ export function DocsPage() {
         <main mix={css(mainStyles)}>
           <h1 mix={css({ margin: 0, fontSize: '32px', fontWeight: 700 })}>Documentation</h1>
 
-          <Section title="Usage">
-            <CodeBlock lines={[
-              'zigtsc <input.ts>                         # print C to stdout',
-              'zigtsc <input.ts> <output.c>              # write C to file',
-              'zigtsc <input.ts> -target js <output.js>  # transpile to JavaScript',
-              'zigtsc <input.ts> -target cpp <outdir/>   # C++ multi-file output',
-            ]} />
-            <P>
-              zigtsc reads a <Code>.ts</Code> file, parses the TypeScript subset, type-checks it,
-              and emits code in one of three targets: C (default), C++, or JavaScript.
-            </P>
-          </Section>
-
           <Section title="Install">
             <H3>Homebrew (recommended)</H3>
-            <CodeBlock lines={[
-              'brew install nathanjmorton/zigtsc/zigtsc',
-            ]} />
+            <CopyBlock command="brew install nathanjmorton/zigtsc/zigtsc" />
             <P>
-              Upgrade via Homebrew: <Code>brew upgrade zigtsc</Code>.
+              Upgrade: <Code>brew upgrade zigtsc</Code>.
             </P>
 
             <H3>Shell script</H3>
-            <CodeBlock lines={[
-              'curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash',
-            ]} />
+            <CopyBlock command="curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash" />
             <P>
-              The installer detects your platform (macOS/Linux, arm64/x86_64), downloads the correct binary
-              from GitHub releases, and places it at <Code>~/.zigtsc/bin/zigtsc</Code>. It also
-              adds <Code>ZIGTSC_INSTALL</Code> and updates your <Code>PATH</Code> in your shell config.
+              Detects your platform (macOS/Linux, arm64/x86_64), downloads the binary to <Code>~/.zigtsc/bin/zigtsc</Code>,
+              and updates your <Code>PATH</Code>.
             </P>
-            <P>
-              To install a specific version:
-            </P>
-            <CodeBlock lines={[
-              'curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash -s v0.1.0',
-            ]} />
 
             <H3>Build from source</H3>
-            <CodeBlock lines={[
-              'git clone https://github.com/nathanjmorton/zigtsc',
-              'cd zigtsc',
-              'zig build -Doptimize=ReleaseFast',
-              'export PATH="$PWD/zig-out/bin:$PATH"',
-            ]} />
+            <CopyBlock command="git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast" />
             <P>Requires <A href="https://ziglang.org/download/">Zig 0.16.0</A>.</P>
-          </Section>
-
-          <Section title="Targets">
-            <H3>C (default)</H3>
-            <P>
-              Single-file output. Interfaces become <Code>typedef struct</Code>, functions map
-              directly, <Code>console.log</Code> becomes <Code>printf</Code>. Compile with{' '}
-              <A href="https://zigc.nathanjmorton.com">zigc</A>.
-            </P>
-            <CodeBlock lines={[
-              'zigtsc fib.ts fib.c',
-              'zigc init fib-app && cp fib.c fib-app/src/main.c',
-              'cd fib-app && zigc run',
-            ]} />
-
-            <H3>JavaScript (-target js)</H3>
-            <P>
-              Strips all type annotations and emits clean JS. Interfaces are omitted (compile-time only).
-              Classes, <Code>this</Code>, and <Code>new</Code> emit directly as ES6 syntax.
-              <Code>console.log</Code> stays as-is.
-            </P>
-            <CodeBlock lines={[
-              'zigtsc counter.ts -target js counter.js',
-              'node counter.js',
-            ]} />
-
-            <H3>C++ (-target cpp)</H3>
-            <P>
-              Multi-file output. Each class emits a <Code>.h</Code>/<Code>.cpp</Code> pair with
-              <Code>#pragma once</Code>, scoped method implementations (<Code>ClassName::method()</Code>),
-              and <Code>this-&gt;</Code> for field access. Free functions and top-level code go in <Code>main.cpp</Code>.
-              Dependency-aware <Code>#include</Code>s are generated automatically.
-              Compile with <A href="https://zigc.nathanjmorton.com">zigc</A>.
-            </P>
-            <CodeBlock lines={[
-              'mkdir -p out && zigtsc counter.ts -target cpp out/',
-              'zigc init counter-app --cpp',
-              'cp out/*.h out/*.cpp counter-app/src/',
-              'cd counter-app && zigc run',
-            ]} />
-          </Section>
-
-          <Section title="Scaffold a project">
-            <CodeBlock lines={[
-              'zigtsc init myapp',
-              'cd myapp',
-            ]} />
-            <P>
-              Creates <Code>main.ts</Code> with interfaces, functions, classes, and top-level code —
-              covering every feature of the language subset. Then transpile:
-            </P>
-            <CodeBlock lines={[
-              'zigtsc main.ts -target js output.js      # JavaScript',
-              'zigtsc main.ts -target cpp out/           # C++ multi-file',
-              'zigtsc main.ts output.c                   # C single-file',
-            ]} />
           </Section>
 
           <Section title="Command reference">
@@ -146,6 +62,58 @@ export function DocsPage() {
                 <span mix={css({ fontSize: '13px', color: 'var(--text-secondary)' })}>{desc}</span>
               </div>
             ))}
+          </Section>
+
+          <Section title="Full pipeline: TypeScript → JavaScript">
+            <P>
+              Scaffold a project, transpile to JS, and run it. The scaffold includes interfaces, classes,
+              functions, and top-level code. Types are stripped; classes emit as ES6 classes.
+            </P>
+            <CopyBlock command="zigtsc init myapp" />
+            <CopyBlock command="cd myapp" />
+            <CopyBlock command="zigtsc main.ts -target js output.js" />
+            <CopyBlock command="node output.js" />
+          </Section>
+
+          <Section title="Full pipeline: TypeScript → C++ → native binary">
+            <P>
+              The scaffold's <Code>main.ts</Code> has a <Code>Counter</Code> class and a <Code>Point</Code> interface.
+              The C++ target emits <Code>Counter.h</Code> + <Code>Counter.cpp</Code> (class with constructor and methods),
+              <Code>main.cpp</Code> (interface struct, free functions, top-level code with <Code>main()</Code>),
+              and dependency-aware <Code>#include</Code>s. Then <A href="https://zigc.nathanjmorton.com">zigc</A> compiles
+              and statically links everything.
+            </P>
+            <CopyBlock command="zigtsc init myapp" />
+            <CopyBlock command="cd myapp" />
+            <CopyBlock command="mkdir -p out && zigtsc main.ts -target cpp out/" />
+            <P>This generates:</P>
+            <CodeBlock lines={[
+              'out/Counter.h      ← #pragma once, class Counter { int32_t value; ... };',
+              'out/Counter.cpp    ← #include "Counter.h", Counter::Counter(), Counter::increment(), ...',
+              'out/main.cpp       ← #include "Counter.h", struct Point, distance(), int main() { ... }',
+            ]} />
+            <P>Create a zigc C++ project and copy the generated files into it:</P>
+            <CopyBlock command="zigc init myapp-cpp --cpp" />
+            <CopyBlock command="cp out/*.h out/*.cpp myapp-cpp/src/" />
+            <CopyBlock command="cd myapp-cpp && zigc build" />
+            <CopyBlock command="zigc run" />
+            <P>
+              zigc's <Code>build.zig</Code> compiles all <Code>.cpp</Code> files in <Code>src/</Code>,
+              resolves the <Code>#include</Code> headers, and statically links them into one binary.
+            </P>
+          </Section>
+
+          <Section title="Full pipeline: TypeScript → C → native binary">
+            <P>
+              Single-file C output. Interfaces become <Code>typedef struct</Code>, functions map directly,
+              <Code>console.log</Code> becomes <Code>printf</Code> with format strings inferred from types.
+            </P>
+            <CopyBlock command="zigtsc init myapp" />
+            <CopyBlock command="cd myapp" />
+            <CopyBlock command="zigtsc main.ts output.c" />
+            <CopyBlock command="zigc init myapp-c" />
+            <CopyBlock command="cp output.c myapp-c/src/main.c" />
+            <CopyBlock command="cd myapp-c && zigc build && zigc run" />
           </Section>
 
           <Section title="Compiler pipeline">
@@ -280,26 +248,13 @@ export function DocsPage() {
             </P>
           </Section>
 
-          <Section title="Examples">
-            <P>Four example programs are included in the <Code>examples/</Code> directory:</P>
-
-            <H3>hello.ts</H3>
-            <CodeBlock lines={[
-              'const message: string = "hello world";',
-              'console.log(message);',
-            ]} />
-
-            <H3>fib.ts</H3>
-            <CodeBlock lines={[
-              'function fib(n: number): number {',
-              '    if (n <= 1) { return n; }',
-              '    return fib(n - 1) + fib(n - 2);',
-              '}',
-              'const result: number = fib(10);',
-              'console.log(result);',
-            ]} />
-
-            <H3>structs.ts</H3>
+          <Section title="What zigtsc init generates">
+            <P>
+              <Code>zigtsc init</Code> creates a <Code>main.ts</Code> that exercises every language feature.
+              The scaffold includes an interface (<Code>Point</Code>), a class (<Code>Counter</Code>) with
+              constructor and methods, a free function (<Code>distance</Code>), and top-level code that
+              instantiates the class with <Code>new</Code>.
+            </P>
             <CodeBlock lines={[
               'interface Point { x: number; y: number; }',
               '',
@@ -309,53 +264,31 @@ export function DocsPage() {
               '    return dx * dx + dy * dy;',
               '}',
               '',
-              'const p1: Point = { x: 0, y: 0 };',
-              'const p2: Point = { x: 3, y: 4 };',
-              'console.log(distance(p1, p2));',
-            ]} />
-
-            <H3>counter.ts (classes)</H3>
-            <CodeBlock lines={[
               'class Counter {',
               '    value: i32;',
-              '    step: i32;',
-              '    constructor(init: i32, step: i32) {',
-              '        this.value = init;',
-              '        this.step = step;',
-              '    }',
-              '    increment(): void { this.value = this.value + this.step; }',
+              '    constructor(init: i32) { this.value = init; }',
+              '    increment(): void { this.value = this.value + 1; }',
+              '    decrement(): void { this.value = this.value - 1; }',
               '    getVal(): i32 { return this.value; }',
               '}',
               '',
-              'const c = new Counter(0, 5);',
+              'const p1: Point = { x: 0, y: 0 };',
+              'const p2: Point = { x: 3, y: 4 };',
+              'console.log(distance(p1, p2));',
+              '',
+              'const c = new Counter(10);',
               'c.increment();',
               'c.increment();',
-              'c.increment();',
+              'c.decrement();',
               'console.log(c.getVal());',
-            ]} />
-
-            <H3>Try all three targets</H3>
-            <CodeBlock lines={[
-              '# JavaScript',
-              'zigtsc examples/counter.ts -target js counter.js && node counter.js',
-              '',
-              '# C++ (multi-file)',
-              'mkdir -p out && zigtsc examples/counter.ts -target cpp out/',
-              'zigc init counter-app --cpp && cp out/*.h out/*.cpp counter-app/src/',
-              'cd counter-app && zigc run',
-              '',
-              '# C (single-file)',
-              'zigtsc examples/fib.ts fib.c',
-              'zigc init fib-app && cp fib.c fib-app/src/main.c',
-              'cd fib-app && zigc run',
             ]} />
           </Section>
 
           <Section title="Running tests">
-            <CodeBlock lines={['zig build test --summary all']} />
+            <CopyBlock command="zig build test --summary all" />
             <P>
-              The test suite includes 22 tests covering the lexer, parser, checker, C codegen,
-              JS codegen, and C++ codegen. All tests pass with zero memory leaks.
+              22 tests covering the lexer, parser, checker, C codegen,
+              JS codegen, and C++ codegen. Zero memory leaks.
             </P>
           </Section>
 
@@ -426,7 +359,95 @@ function CodeBlock() {
   )
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+function CopyBlock() {
+  return ({ command }: { command: string }) => (
+    <div
+      data-copy={command}
+      mix={css({
+        width: '100%',
+        margin: 0,
+        background: 'var(--surface-3)',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        padding: '12px 16px',
+        cursor: 'pointer',
+        position: 'relative',
+        transition: 'border-color 150ms ease',
+        '&:hover': { borderColor: 'var(--accent)' },
+      })}
+    >
+      <pre
+        mix={css({
+          margin: 0,
+          fontSize: '13px',
+          lineHeight: 1.6,
+          color: 'var(--text-primary)',
+          overflowX: 'auto',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          '&::before': { content: '"$ "', color: 'var(--text-tertiary)' },
+        })}
+      >
+        {command}
+      </pre>
+      <span
+        className="copy-hint"
+        mix={css({
+          position: 'absolute',
+          top: '8px',
+          right: '12px',
+          fontSize: '11px',
+          color: 'var(--text-tertiary)',
+          transition: 'opacity 150ms ease',
+        })}
+      >
+        click to copy
+      </span>
+    </div>
+  )
+}
+
+const COPY_SCRIPT = `
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-copy]');
+  if (!el) return;
+  e.preventDefault();
+  var text = el.getAttribute('data-copy');
+  var hint = el.querySelector('.copy-hint');
+  navigator.clipboard.writeText(text).then(function() {
+    if (hint) {
+      hint.textContent = 'Copied!';
+      hint.style.color = 'var(--accent)';
+      hint.style.fontWeight = '700';
+      setTimeout(function() {
+        hint.textContent = 'click to copy';
+        hint.style.color = 'var(--text-tertiary)';
+        hint.style.fontWeight = 'normal';
+      }, 2000);
+    }
+  }).catch(function() {
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (hint) {
+      hint.textContent = 'Copied!';
+      hint.style.color = 'var(--accent)';
+      hint.style.fontWeight = '700';
+      setTimeout(function() {
+        hint.textContent = 'click to copy';
+        hint.style.color = 'var(--text-tertiary)';
+        hint.style.fontWeight = 'normal';
+      }, 2000);
+    }
+  });
+});
+`
+
+// ── Styles
 
 const bodyStyles = {
   '--surface-0': '#0c0d10',
