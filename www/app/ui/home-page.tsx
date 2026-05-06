@@ -84,9 +84,8 @@ function Hero() {
         <Tag>Written in Zig</Tag>
       </div>
       <CopyBlock
-        command="zig build -Doptimize=ReleaseFast"
-        display="$ git clone https://github.com/nathanjmorton/zigtsc
-$ cd zigtsc && zig build -Doptimize=ReleaseFast"
+        command={"git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast"}
+        display={"git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast"}
       />
       <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
         Requires{' '}
@@ -413,7 +412,7 @@ const linkStyles = {
 
 function CopyBlock() {
   return ({ command, display }: { command: string; display: string }) => (
-    <pre
+    <div
       data-copy={command}
       mix={css({
         width: '100%',
@@ -423,31 +422,40 @@ function CopyBlock() {
         border: '1px solid var(--border)',
         borderRadius: '12px',
         padding: '16px 20px',
-        fontSize: '14px',
-        lineHeight: 1.5,
-        color: 'var(--text-primary)',
-        overflowX: 'auto',
-        whiteSpace: 'pre',
-        textAlign: 'left',
         cursor: 'pointer',
         position: 'relative',
         transition: 'border-color 150ms ease',
         '&:hover': { borderColor: 'var(--accent)' },
-        '&::after': {
-          content: '"click to copy"',
+      })}
+    >
+      <pre
+        mix={css({
+          margin: 0,
+          fontSize: '13px',
+          lineHeight: 1.6,
+          color: 'var(--text-primary)',
+          overflowX: 'auto',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+          '&::before': { content: '"$ "', color: 'var(--text-tertiary)' },
+        })}
+      >
+        {display}
+      </pre>
+      <span
+        className="copy-hint"
+        mix={css({
           position: 'absolute',
           top: '8px',
           right: '12px',
           fontSize: '11px',
           color: 'var(--text-tertiary)',
-          opacity: 0,
           transition: 'opacity 150ms ease',
-        },
-        '&:hover::after': { opacity: 1 },
-      })}
-    >
-      {display}
-    </pre>
+        })}
+      >
+        click to copy
+      </span>
+    </div>
   )
 }
 
@@ -455,18 +463,39 @@ const COPY_SCRIPT = `
 document.addEventListener('click', function(e) {
   var el = e.target.closest('[data-copy]');
   if (!el) return;
+  e.preventDefault();
   var text = el.getAttribute('data-copy');
+  var hint = el.querySelector('.copy-hint');
   navigator.clipboard.writeText(text).then(function() {
-    var span = el.querySelector('.copy-feedback');
-    if (!span) {
-      span = document.createElement('span');
-      span.className = 'copy-feedback';
-      span.style.cssText = 'position:absolute;top:8px;right:12px;font-size:11px;color:var(--accent);';
-      span.textContent = 'Copied!';
-      el.appendChild(span);
+    if (hint) {
+      hint.textContent = 'Copied!';
+      hint.style.color = 'var(--accent)';
+      hint.style.fontWeight = '700';
+      setTimeout(function() {
+        hint.textContent = 'click to copy';
+        hint.style.color = 'var(--text-tertiary)';
+        hint.style.fontWeight = 'normal';
+      }, 2000);
     }
-    span.style.opacity = '1';
-    setTimeout(function() { span.style.opacity = '0'; }, 1500);
+  }).catch(function() {
+    // Fallback for non-secure contexts
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (hint) {
+      hint.textContent = 'Copied!';
+      hint.style.color = 'var(--accent)';
+      hint.style.fontWeight = '700';
+      setTimeout(function() {
+        hint.textContent = 'click to copy';
+        hint.style.color = 'var(--text-tertiary)';
+        hint.style.fontWeight = 'normal';
+      }, 2000);
+    }
   });
 });
 `
