@@ -24,7 +24,7 @@ export function HomePage() {
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
         />
         <script type="module" src={routes.assets.href({ path: 'app/assets/entry.ts' })}></script>
-        <script dangerouslySetInnerHTML={{ __html: COPY_SCRIPT }} />
+        <script>{COPY_SCRIPT}</script>
       </head>
       <body mix={css(bodyStyles)}>
         <main mix={css(mainStyles)}>
