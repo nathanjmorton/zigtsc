@@ -34,14 +34,14 @@ export function DocsPage() {
             <H3>Homebrew (recommended)</H3>
             <CopyBlock command="brew install nathanjmorton/zigtsc/zigtsc" />
             <P>
-              Upgrade: <Code>brew upgrade zigtsc</Code>.
+              Upgrade: <Code>brew upgrade zigtsc</Code> or <Code>zigtsc upgrade</Code>.
             </P>
 
             <H3>Shell script</H3>
             <CopyBlock command="curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash" />
             <P>
               Detects your platform (macOS/Linux, arm64/x86_64), downloads the binary to <Code>~/.zigtsc/bin/zigtsc</Code>,
-              and updates your <Code>PATH</Code>.
+              and updates your <Code>PATH</Code>. Upgrade with <Code>zigtsc upgrade</Code> or re-run the install script.
             </P>
 
             <H3>Build from source</H3>
@@ -55,6 +55,7 @@ export function DocsPage() {
               ['zigtsc <file.ts> [output]', 'Transpile to C (default target)'],
               ['zigtsc <file.ts> -target js [output]', 'Transpile to JavaScript'],
               ['zigtsc <file.ts> -target cpp [outdir]', 'Transpile to C++ (multi-file)'],
+              ['zigtsc upgrade', 'Update to the latest release (detects Homebrew vs shell install)'],
               ['zigtsc help', 'Print help message'],
             ].map(([cmd, desc]) => (
               <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>

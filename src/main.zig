@@ -17,6 +17,7 @@ const HELP_TEXT =
     \\
     \\Commands:
     \\  init [dir]    Scaffold a new project with a starter main.ts
+    \\  upgrade       Update zigtsc to the latest release
     \\  help          Print this help message
     \\
     \\Targets:
@@ -109,6 +110,19 @@ const INIT_TEMPLATE =
     \\
 ;
 
+fn runUpgrade() void {
+    std.debug.print(
+        \\zigtsc upgrade
+        \\
+        \\If installed via Homebrew:
+        \\  brew upgrade zigtsc
+        \\
+        \\If installed via shell script:
+        \\  curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash
+        \\
+    , .{});
+}
+
 fn runInit(io: std.Io, dir: []const u8) !void {
     const cwd = std.Io.Dir.cwd();
     if (!std.mem.eql(u8, dir, ".")) {
@@ -160,6 +174,11 @@ pub fn main(init_arg: std.process.Init) !void {
     if (std.mem.eql(u8, args[0], "init")) {
         const dir = if (args.len > 1) args[1] else ".";
         return runInit(io, dir);
+    }
+
+    if (std.mem.eql(u8, args[0], "upgrade")) {
+        runUpgrade();
+        return;
     }
 
     // Parse flags
