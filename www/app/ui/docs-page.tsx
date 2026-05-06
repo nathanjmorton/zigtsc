@@ -73,36 +73,35 @@ export function DocsPage() {
             <CopyBlock command={"zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"} display={"zigtsc init myapp && \\\ncd myapp && \\\nzigtsc main.ts -target js output.js && \\\nnode output.js"} />
           </Section>
 
-          <Section title="Full pipeline: TypeScript → C++ → native binary">
+          <Section title="Full pipeline: TypeScript → native binary">
             <P>
-              The scaffold's <Code>main.ts</Code> has a <Code>Counter</Code> class and a <Code>Point</Code> interface.
-              The C++ target emits <Code>Counter.h</Code> + <Code>Counter.cpp</Code> (class with constructor and methods),
-              <Code>main.cpp</Code> (interface struct, free functions, top-level code with <Code>main()</Code>),
-              and dependency-aware <Code>#include</Code>s. Then <A href="https://zigc.nathanjmorton.com">zigc</A> compiles
-              and statically links everything.
+              <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag handles everything in one step.
+              It writes <Code>main.ts</Code>, calls zigtsc to generate C++ class files, creates a C entrypoint
+              with <Code>extern "C"</Code> bridge wrappers, and sets up the build. The split is automatic
+              based on the TypeScript contents:
             </P>
-            <CopyBlock command={"zigtsc init myapp && cd myapp && mkdir -p out && zigtsc main.ts -target cpp out/"} display={"zigtsc init myapp && \\\ncd myapp && \\\nmkdir -p out && \\\nzigtsc main.ts -target cpp out/"} />
-            <P>This generates:</P>
             <CodeBlock lines={[
-              'out/Counter.h      ← #pragma once, class Counter { int32_t value; ... };',
-              'out/Counter.cpp    ← #include "Counter.h", Counter::Counter(), Counter::increment(), ...',
-              'out/main.cpp       ← #include "Counter.h", struct Point, distance(), int main() { ... }',
+              'Interfaces  → C struct in main.c',
+              'Classes     → C++ .h/.cpp with extern "C" bridge',
+              'Entrypoint  → C (main.c)',
             ]} />
-            <P>Create a zigc C++ project, copy the generated files, build and run:</P>
-            <CopyBlock command={"zigc init myapp-cpp --cpp && cp out/*.h out/*.cpp myapp-cpp/src/ && cd myapp-cpp && zigc build && zigc run"} display={"zigc init myapp-cpp --cpp && \\\ncp out/*.h out/*.cpp myapp-cpp/src/ && \\\ncd myapp-cpp && \\\nzigc build && \\\nzigc run"} />
+            <CopyBlock command={"zigc init myapp --ts && cd myapp && zigc run"} display={"zigc init myapp --ts && \\\ncd myapp && \\\nzigc run"} />
+            <P>This generates a mixed C/C++ project:</P>
+            <CodeBlock lines={[
+              'myapp/',
+              '├── main.ts            ← TypeScript source (Counter class + Point interface)',
+              '├── build.zig          ← compiles main.c + Counter.cpp, links libc++',
+              '├── build.zig.zon',
+              '└── src/',
+              '    ├── main.c         ← C entrypoint: Point struct, counter_create/increment/getVal',
+              '    ├── Counter.h      ← C++ class: class Counter { int32_t value; ... };',
+              '    └── Counter.cpp    ← C++ impl + extern "C" { counter_create, ... }',
+            ]} />
             <P>
-              zigc's <Code>build.zig</Code> compiles all <Code>.cpp</Code> files in <Code>src/</Code>,
-              resolves the <Code>#include</Code> headers, and statically links them into one binary.
+              The C entrypoint creates a <Code>Counter</Code> object via the bridge, calls <Code>increment()</Code> three
+              times, and prints the result. Interfaces compile to plain C structs.
+              zigc's build system compiles both C and C++ sources and statically links them into one binary.
             </P>
-          </Section>
-
-          <Section title="Full pipeline: TypeScript → C → native binary">
-            <P>
-              Single-file C output. Interfaces become <Code>typedef struct</Code>, functions map directly,
-              <Code>console.log</Code> becomes <Code>printf</Code> with format strings inferred from types.
-            </P>
-            <CopyBlock command={"zigtsc init myapp && cd myapp && zigtsc main.ts output.c"} display={"zigtsc init myapp && \\\ncd myapp && \\\nzigtsc main.ts output.c"} />
-            <CopyBlock command={"zigc init myapp-c && cp output.c myapp-c/src/main.c && cd myapp-c && zigc build && zigc run"} display={"zigc init myapp-c && \\\ncp output.c myapp-c/src/main.c && \\\ncd myapp-c && \\\nzigc build && \\\nzigc run"} />
           </Section>
 
           <Section title="Compiler pipeline">
