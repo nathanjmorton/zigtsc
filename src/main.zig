@@ -8,7 +8,7 @@ const NodeIndex = @import("ast.zig").NodeIndex;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const Target = enum { c, cpp, js, all };
 
