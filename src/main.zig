@@ -6,6 +6,10 @@ const CodeGenJS = @import("codegen_js.zig").CodeGenJS;
 const CodeGenCpp = @import("codegen_cpp.zig").CodeGenCpp;
 const NodeIndex = @import("ast.zig").NodeIndex;
 
+// ── Version ───────────────────────────────────────────────────────────────────
+
+const VERSION = "0.2.0";
+
 const Target = enum { c, cpp, js, all };
 
 const HELP_TEXT =
@@ -16,6 +20,7 @@ const HELP_TEXT =
     \\  zigtsc <input.ts>                          # transpile to all targets
     \\  zigtsc <input.ts> -target c|cpp|js [out]   # single target
     \\  zigtsc init [directory]                     # scaffold a project
+    \\  zigtsc upgrade                              # upgrade to latest release
     \\
     \\With no -target flag, zigtsc emits all four files named after the input:
     \\  <base>.h    unified header (#ifdef __cplusplus)
@@ -24,7 +29,7 @@ const HELP_TEXT =
     \\  <base>.js   JavaScript output
     \\
     \\Compile the C/C++ output with zigc:
-    \\  zigc init myapp --ts && cd myapp && zigc run
+    \\  zigc init myapp --ts && cd myapp && zigtsc main.ts && zigc run
     \\
     \\Docs:   https://zigtsc.nathanjmorton.com/docs
     \\GitHub: https://github.com/nathanjmorton/zigtsc
@@ -35,7 +40,7 @@ const INIT_TEMPLATE =
     \\// zigtsc starter — transpile with: zigtsc main.ts
     \\//
     \\// Produces: main.h  main.c  main.cpp  main.js
-    \\// Compile:  zigc init myapp --ts && cd myapp && zigc run
+    \\// Compile:  zigc init myapp --ts && cd myapp && zigtsc main.ts && zigc run
     \\
     \\interface Point {
     \\    x: number;
@@ -69,17 +74,149 @@ const INIT_TEMPLATE =
     \\
 ;
 
-fn runUpgrade() void {
-    std.debug.print(
-        \\zigtsc upgrade
-        \\
-        \\If installed via Homebrew:
-        \\  brew upgrade zigtsc
-        \\
-        \\If installed via shell script:
-        \\  curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash
-        \\
-    , .{});
+// ── Upgrade ──────────────────────────────────────────────────────────────────
+
+fn cmdUpgrade(io: std.Io, allocator: std.mem.Allocator) !void {
+    const GITHUB_API = "https://api.github.com/repos/nathanjmorton/zigtsc/releases/latest";
+
+    // 1. Fetch latest release tag from GitHub API.
+    const api_result = try std.process.run(allocator, io, .{
+        .argv = &.{ "curl", "-sfL", "-H", "Accept: application/vnd.github.v3+json", GITHUB_API },
+    });
+    defer allocator.free(api_result.stdout);
+    defer allocator.free(api_result.stderr);
+
+    const api_ok = switch (api_result.term) { .exited => |c| c == 0, else => false };
+    if (!api_ok or api_result.stdout.len == 0) {
+        std.debug.print("error: failed to check for updates\n", .{});
+        return error.FetchFailed;
+    }
+
+    // Extract "tag_name" from the JSON response.
+    const tag = extractJsonString(api_result.stdout, "tag_name") orelse {
+        std.debug.print("error: could not parse latest release\n", .{});
+        return error.ParseFailed;
+    };
+
+    // Strip leading 'v' if present for version comparison.
+    const latest_version = if (tag.len > 0 and tag[0] == 'v') tag[1..] else tag;
+
+    if (std.mem.eql(u8, latest_version, VERSION)) {
+        std.debug.print("zigtsc is already up to date (v{s})\n", .{VERSION});
+        return;
+    }
+
+    std.debug.print("Upgrading zigtsc v{s} → {s}\n", .{ VERSION, tag });
+
+    // 2. Detect current platform.
+    const platform = comptime detectTarget();
+
+    // 3. Build download URL.
+    const download_url = try std.fmt.allocPrint(allocator,
+        "https://github.com/nathanjmorton/zigtsc/releases/download/{s}/zigtsc-{s}.tar.gz",
+        .{ tag, platform });
+    defer allocator.free(download_url);
+
+    // 4. Find the actual binary location via `which zigtsc`.
+    const which_result = try std.process.run(allocator, io, .{
+        .argv = &.{ "which", "zigtsc" },
+    });
+    defer allocator.free(which_result.stdout);
+    defer allocator.free(which_result.stderr);
+
+    const which_ok = switch (which_result.term) { .exited => |c| c == 0, else => false };
+    if (!which_ok or which_result.stdout.len == 0) {
+        std.debug.print("error: could not find zigtsc on PATH\n", .{});
+        return error.NotFound;
+    }
+    const self_path = std.mem.trimEnd(u8, which_result.stdout, "\n\r ");
+
+    // Detect Homebrew installs and warn the user.
+    if (std.mem.indexOf(u8, self_path, "/homebrew/") != null or
+        std.mem.indexOf(u8, self_path, "/Cellar/") != null)
+    {
+        std.debug.print("zigtsc is installed via Homebrew ({s}).\n", .{self_path});
+        std.debug.print("Use 'brew upgrade zigtsc' instead of 'zigtsc upgrade'.\n", .{});
+        return;
+    }
+
+    // 5. Download to a temp file and extract.
+    const tmp_tar = try std.fmt.allocPrint(allocator, "{s}.tar.gz", .{self_path});
+    defer allocator.free(tmp_tar);
+
+    const dl_result = try std.process.run(allocator, io, .{
+        .argv = &.{ "curl", "-fL", "--progress-bar", "-o", tmp_tar, download_url },
+    });
+    defer allocator.free(dl_result.stdout);
+    defer allocator.free(dl_result.stderr);
+
+    const dl_ok = switch (dl_result.term) { .exited => |c| c == 0, else => false };
+    if (!dl_ok) {
+        std.debug.print("error: failed to download {s}\n", .{download_url});
+        return error.DownloadFailed;
+    }
+
+    // Extract the binary, overwriting the existing one.
+    const bin_dir = self_path[0 .. std.mem.lastIndexOfScalar(u8, self_path, '/') orelse 0];
+    const extract_result = try std.process.run(allocator, io, .{
+        .argv = &.{ "tar", "-xzf", tmp_tar, "-C", bin_dir },
+    });
+    defer allocator.free(extract_result.stdout);
+    defer allocator.free(extract_result.stderr);
+
+    const extract_ok = switch (extract_result.term) { .exited => |c| c == 0, else => false };
+    if (!extract_ok) {
+        std.debug.print("error: failed to extract update\n", .{});
+        return error.ExtractFailed;
+    }
+
+    // Clean up the tarball.
+    const cwd = std.Io.Dir.cwd();
+    cwd.deleteFile(io, tmp_tar) catch {};
+
+    // Make executable.
+    const chmod_result = try std.process.run(allocator, io, .{
+        .argv = &.{ "chmod", "+x", self_path },
+    });
+    defer allocator.free(chmod_result.stdout);
+    defer allocator.free(chmod_result.stderr);
+
+    std.debug.print("zigtsc upgraded to {s}\n", .{tag});
+}
+
+/// Extract the string value for a given key inside a JSON object fragment.
+fn extractJsonString(block: []const u8, key: []const u8) ?[]const u8 {
+    var pos: usize = 0;
+    while (pos < block.len) {
+        const q1 = std.mem.indexOfScalarPos(u8, block, pos, '"') orelse return null;
+        const ks = q1 + 1;
+        const q2 = std.mem.indexOfScalarPos(u8, block, ks, '"') orelse return null;
+        const found_key = block[ks..q2];
+        pos = q2 + 1;
+        if (std.mem.eql(u8, found_key, key)) {
+            // Next quoted string is the value.
+            const v1 = std.mem.indexOfScalarPos(u8, block, pos, '"') orelse return null;
+            const vs = v1 + 1;
+            const v2 = std.mem.indexOfScalarPos(u8, block, vs, '"') orelse return null;
+            return block[vs..v2];
+        }
+    }
+    return null;
+}
+
+/// Detect the Zig target triple for the current platform at comptime.
+fn detectTarget() []const u8 {
+    const arch = @import("builtin").cpu.arch;
+    const os = @import("builtin").os.tag;
+    if (os == .macos) {
+        if (arch == .aarch64) return "aarch64-macos";
+        if (arch == .x86_64) return "x86_64-macos";
+    }
+    if (os == .linux) {
+        if (arch == .aarch64) return "aarch64-linux-gnu";
+        if (arch == .x86_64) return "x86_64-linux-gnu";
+    }
+    @compileError("unsupported platform for zigtsc upgrade");
 }
 
 fn runInit(io: std.Io, dir: []const u8) !void {
@@ -101,7 +238,7 @@ fn runInit(io: std.Io, dir: []const u8) !void {
     std.debug.print("created {s}\n\n", .{sub_path});
     std.debug.print("next steps:\n", .{});
     std.debug.print("  zigtsc {s}                         # transpile to .h .c .cpp .js\n", .{sub_path});
-    std.debug.print("  zigc init myapp --ts               # create zigc project from TypeScript\n", .{});
+    std.debug.print("  zigc init myapp --ts               # scaffold zigc project with main.ts\n", .{});
 }
 
 pub fn main(init_arg: std.process.Init) !void {
@@ -140,8 +277,7 @@ pub fn main(init_arg: std.process.Init) !void {
     }
 
     if (std.mem.eql(u8, args[0], "upgrade")) {
-        runUpgrade();
-        return;
+        return cmdUpgrade(io, allocator);
     }
 
     // Parse flags
