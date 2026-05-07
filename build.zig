@@ -4,12 +4,16 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // ── zigc library dependency ─────────────────────────────────────────
+    const zigc_dep = b.dependency("zigc", .{ .target = target, .optimize = optimize });
+
     // ── zigtsc CLI ─────────────────────────────────────────────────────
     const cli_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
+    cli_mod.addImport("zigc", zigc_dep.module("zigc"));
     const exe = b.addExecutable(.{
         .name = "zigtsc",
         .root_module = cli_mod,

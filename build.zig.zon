@@ -7,5 +7,10 @@
         "build.zig.zon",
         "src",
     },
+    .dependencies = .{
+        .zigc = .{
+            .path = "../zigc",
+        },
+    },
     .fingerprint = 0xaaf98fd9405020d8,
 }
