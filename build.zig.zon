@@ -9,7 +9,8 @@
     },
     .dependencies = .{
         .zigc = .{
-            .path = "../zigc",
+            .url = "git+https://github.com/nathanjmorton/zigc.git#77d69858cd6e4e6e9404d20bb787d2043004293e",
+            .hash = "zigc-0.1.0-GRGeC17dAQCCYof8loycDCnvL0xIbxUKDWBgsAUtFP24",
         },
     },
     .fingerprint = 0xaaf98fd9405020d8,

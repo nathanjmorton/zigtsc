@@ -5,15 +5,21 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // ── zigc library dependency ─────────────────────────────────────────
-    const zigc_dep = b.dependency("zigc", .{ .target = target, .optimize = optimize });
+    const zigc_dep = b.dependency("zigc", .{});
 
     // ── zigtsc CLI ─────────────────────────────────────────────────────
     const cli_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
-    cli_mod.addImport("zigc", zigc_dep.module("zigc"));
+    cli_mod.addImport("zigc", b.createModule(.{
+        .root_source_file = zigc_dep.path("src/lib.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    }));
     const exe = b.addExecutable(.{
         .name = "zigtsc",
         .root_module = cli_mod,
