@@ -92,13 +92,12 @@ export function DocsPage() {
 
           <Section title="Full pipeline: TypeScript → native binary">
             <P>
-              <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag handles everything:
-              scaffolds <Code>main.ts</Code>, calls <Code>zigtsc main.ts</Code> to generate all targets,
-              moves <Code>main.h</Code> / <Code>main.c</Code> / <Code>main.cpp</Code> into <Code>src/</Code>,
-              and sets up the build.
+              <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag scaffolds the
+              project with <Code>main.ts</Code> and the build infrastructure. You then run{' '}
+              <Code>zigtsc main.ts</Code> to generate the C/C++ sources before building:
             </P>
-            <CopyBlock command={"zigc init myapp --ts && cd myapp && zigc run"} display={"zigc init myapp --ts && \\\ncd myapp && \\\nzigc run"} />
-            <P>Generated project:</P>
+            <CopyBlock command={"zigc init myapp --ts && cd myapp && zigtsc main.ts && mv main.h main.c main.cpp src/ && zigc run"} display={"zigc init myapp --ts && \\\ncd myapp && \\\nzigtsc main.ts && \\\nmv main.h main.c main.cpp src/ && \\\nzigc run"} />
+            <P>Generated project after running zigtsc:</P>
             <CodeBlock lines={[
               'myapp/',
               '├── main.ts            ← TypeScript source',
