@@ -335,11 +335,15 @@ pub fn main(init_arg: std.process.Init) !void {
 
     switch (target) {
         .all => {
-            // Derive basename from input path (strip .ts extension and directory)
+            // Derive basename and directory prefix from input path
             var basename: []const u8 = in_path;
-            if (std.mem.lastIndexOfScalar(u8, basename, '/')) |sep| basename = basename[sep + 1 ..];
+            var dir_prefix: []const u8 = "";
+            if (std.mem.lastIndexOfScalar(u8, in_path, '/')) |sep| {
+                dir_prefix = in_path[0 .. sep + 1];
+                basename = in_path[sep + 1 ..];
+            }
             if (std.mem.endsWith(u8, basename, ".ts")) basename = basename[0 .. basename.len - 3];
-            try transpileAllParsed(io, allocator, &parser, &checker, root, basename);
+            try transpileAllParsed(io, allocator, &parser, &checker, root, basename, dir_prefix);
         },
         .c => {
             var codegen = CodeGen.init(&parser.tree, &checker, allocator);
@@ -408,17 +412,17 @@ fn transpileAll(io: std.Io, allocator: std.mem.Allocator, source: []const u8, ba
     var checker = Checker.init(&parser.tree, allocator);
     defer checker.deinit();
     try checker.check(root);
-    try transpileAllParsed(io, allocator, &parser, &checker, root, basename);
+    try transpileAllParsed(io, allocator, &parser, &checker, root, basename, "");
 }
 
-fn transpileAllParsed(io: std.Io, allocator: std.mem.Allocator, parser: *Parser, checker: *Checker, root: NodeIndex, basename: []const u8) !void {
+fn transpileAllParsed(io: std.Io, allocator: std.mem.Allocator, parser: *Parser, checker: *Checker, root: NodeIndex, basename: []const u8, dir_prefix: []const u8) !void {
     const cwd = std.Io.Dir.cwd();
 
     // JS
     var js_gen = CodeGenJS.init(&parser.tree, allocator);
     defer js_gen.deinit();
     const js_source = try js_gen.generate(root);
-    const js_name = try std.fmt.allocPrint(allocator, "{s}.js", .{basename});
+    const js_name = try std.fmt.allocPrint(allocator, "{s}{s}.js", .{ dir_prefix, basename });
     defer allocator.free(js_name);
     cwd.writeFile(io, .{ .sub_path = js_name, .data = js_source }) catch {
         std.debug.print("error: cannot write '{s}'\n", .{js_name});
@@ -431,10 +435,15 @@ fn transpileAllParsed(io: std.Io, allocator: std.mem.Allocator, parser: *Parser,
     defer cpp_gen.deinit();
     const files = try cpp_gen.generateUnified(root, basename);
     for (files) |file| {
-        cwd.writeFile(io, .{ .sub_path = file.name, .data = file.content }) catch {
-            std.debug.print("error: cannot write '{s}'\n", .{file.name});
+        const out_path = if (dir_prefix.len > 0)
+            try std.fmt.allocPrint(allocator, "{s}{s}", .{ dir_prefix, file.name })
+        else
+            file.name;
+        defer if (dir_prefix.len > 0) allocator.free(out_path);
+        cwd.writeFile(io, .{ .sub_path = out_path, .data = file.content }) catch {
+            std.debug.print("error: cannot write '{s}'\n", .{out_path});
             return error.WriteError;
         };
-        std.debug.print("wrote {s} ({d} bytes)\n", .{ file.name, file.content.len });
+        std.debug.print("wrote {s} ({d} bytes)\n", .{ out_path, file.content.len });
     }
 }
