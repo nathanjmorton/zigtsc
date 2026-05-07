@@ -286,8 +286,8 @@ function QuickStart() {
     <section aria-label="Quick start" mix={css({ width: '100%' })}>
       <h2 mix={css(sectionHeadingStyles)}>Quick start</h2>
       <CopyBlock
-        command={"zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"}
-        display={"zigtsc init myapp && \\\ncd myapp && \\\nzigtsc main.ts -target js output.js && \\\nnode output.js"}
+        command={"zigc init demo --ts && cd demo && zigtsc ./src/main.ts && zigc run"}
+        display={"zigc init demo --ts && \\\ncd demo && \\\nzigtsc ./src/main.ts && \\\nzigc run"}
       />
       <p
         mix={css({

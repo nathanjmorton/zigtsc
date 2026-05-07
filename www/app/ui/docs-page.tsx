@@ -93,21 +93,21 @@ export function DocsPage() {
           <Section title="Full pipeline: TypeScript → native binary">
             <P>
               <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag scaffolds the
-              project with <Code>main.ts</Code> and the build infrastructure. You then run{' '}
-              <Code>zigtsc main.ts</Code> to generate the C/C++ sources before building:
+              project with <Code>src/main.ts</Code> and the build infrastructure. Running{' '}
+              <Code>zigtsc ./src/main.ts</Code> generates the C/C++ sources directly into <Code>src/</Code>:
             </P>
-            <CopyBlock command={"zigc init myapp --ts && cd myapp && zigtsc main.ts && mv main.h main.c main.cpp src/ && zigc run"} display={"zigc init myapp --ts && \\\ncd myapp && \\\nzigtsc main.ts && \\\nmv main.h main.c main.cpp src/ && \\\nzigc run"} />
+            <CopyBlock command={"zigc init demo --ts && cd demo && zigtsc ./src/main.ts && zigc run"} display={"zigc init demo --ts && \\\ncd demo && \\\nzigtsc ./src/main.ts && \\\nzigc run"} />
             <P>Generated project after running zigtsc:</P>
             <CodeBlock lines={[
-              'myapp/',
-              '├── main.ts            ← TypeScript source',
-              '├── main.js            ← JS output (also usable with node)',
+              'demo/',
               '├── build.zig          ← compiles main.c + main.cpp, links libc++',
               '├── build.zig.zon',
               '└── src/',
+              '    ├── main.ts        ← TypeScript source',
               '    ├── main.h         ← unified header (#ifdef __cplusplus)',
               '    ├── main.c         ← C entrypoint: Point struct, counter_create/increment/getVal',
-              '    └── main.cpp       ← C++ class impl + extern "C" bridge functions',
+              '    ├── main.cpp       ← C++ class impl + extern "C" bridge functions',
+              '    └── main.js        ← JS output (also usable with node)',
             ]} />
           </Section>
 
