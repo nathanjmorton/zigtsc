@@ -51,11 +51,13 @@ export function DocsPage() {
 
           <Section title="Command reference">
             {[
+              ['zigtsc', 'Transpile main.ts in cwd → .h .c .cpp .js'],
+              ['zigtsc <file.ts>', 'Transpile to all targets (4 files named after input)'],
+              ['zigtsc <file.ts> -target c [output]', 'Single-file C output'],
+              ['zigtsc <file.ts> -target js [output]', 'JavaScript output'],
+              ['zigtsc <file.ts> -target cpp [outdir]', 'C++ multi-file output (.h/.cpp per class)'],
               ['zigtsc init [dir]', 'Scaffold a new project with a starter main.ts'],
-              ['zigtsc <file.ts> [output]', 'Transpile to C (default target)'],
-              ['zigtsc <file.ts> -target js [output]', 'Transpile to JavaScript'],
-              ['zigtsc <file.ts> -target cpp [outdir]', 'Transpile to C++ (multi-file)'],
-              ['zigtsc upgrade', 'Update to the latest release (detects Homebrew vs shell install)'],
+              ['zigtsc upgrade', 'Update to the latest release'],
               ['zigtsc help', 'Print help message'],
             ].map(([cmd, desc]) => (
               <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
@@ -63,6 +65,21 @@ export function DocsPage() {
                 <span mix={css({ fontSize: '13px', color: 'var(--text-secondary)' })}>{desc}</span>
               </div>
             ))}
+          </Section>
+
+          <Section title="Default output (all targets)">
+            <P>
+              With no <Code>-target</Code> flag, zigtsc emits all four files named after the input.
+              Classes become C++ with <Code>extern "C"</Code> bridge wrappers. Interfaces become C structs.
+              The C file is the entrypoint.
+            </P>
+            <CopyBlock command="zigtsc main.ts" />
+            <CodeBlock lines={[
+              'main.h      unified header (#ifdef __cplusplus guards)',
+              'main.c      C entrypoint — bridge calls, interface structs, main()',
+              'main.cpp    C++ class implementations + extern "C" bridge',
+              'main.js     JavaScript output',
+            ]} />
           </Section>
 
           <Section title="Full pipeline: TypeScript → JavaScript">
@@ -75,40 +92,31 @@ export function DocsPage() {
 
           <Section title="Full pipeline: TypeScript → native binary">
             <P>
-              <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag handles everything in one step.
-              It writes <Code>main.ts</Code>, calls zigtsc to generate C++ class files, creates a C entrypoint
-              with <Code>extern "C"</Code> bridge wrappers, and sets up the build. The split is automatic
-              based on the TypeScript contents:
+              <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag handles everything:
+              scaffolds <Code>main.ts</Code>, calls <Code>zigtsc main.ts</Code> to generate all targets,
+              moves <Code>main.h</Code> / <Code>main.c</Code> / <Code>main.cpp</Code> into <Code>src/</Code>,
+              and sets up the build.
             </P>
-            <CodeBlock lines={[
-              'Interfaces  → C struct in main.c',
-              'Classes     → C++ .h/.cpp with extern "C" bridge',
-              'Entrypoint  → C (main.c)',
-            ]} />
             <CopyBlock command={"zigc init myapp --ts && cd myapp && zigc run"} display={"zigc init myapp --ts && \\\ncd myapp && \\\nzigc run"} />
-            <P>This generates a mixed C/C++ project:</P>
+            <P>Generated project:</P>
             <CodeBlock lines={[
               'myapp/',
-              '├── main.ts            ← TypeScript source (Counter class + Point interface)',
-              '├── build.zig          ← compiles main.c + Counter.cpp, links libc++',
+              '├── main.ts            ← TypeScript source',
+              '├── main.js            ← JS output (also usable with node)',
+              '├── build.zig          ← compiles main.c + main.cpp, links libc++',
               '├── build.zig.zon',
               '└── src/',
+              '    ├── main.h         ← unified header (#ifdef __cplusplus)',
               '    ├── main.c         ← C entrypoint: Point struct, counter_create/increment/getVal',
-              '    ├── Counter.h      ← C++ class: class Counter { int32_t value; ... };',
-              '    └── Counter.cpp    ← C++ impl + extern "C" { counter_create, ... }',
+              '    └── main.cpp       ← C++ class impl + extern "C" bridge functions',
             ]} />
-            <P>
-              The C entrypoint creates a <Code>Counter</Code> object via the bridge, calls <Code>increment()</Code> three
-              times, and prints the result. Interfaces compile to plain C structs.
-              zigc's build system compiles both C and C++ sources and statically links them into one binary.
-            </P>
           </Section>
 
           <Section title="Compiler pipeline">
             <CodeBlock lines={[
-              'source.ts → Lexer → Tokens → Parser → AST → Checker →┬→ CodeGen    → output.c',
-              '                                                      ├→ CodeGenJS  → output.js',
-              '                                                      └→ CodeGenCpp → .h/.cpp files',
+              'source.ts → Lexer → Tokens → Parser → AST → Checker →┬→ CodeGen    → output.c  (single-target)',
+              '                                                      ├→ CodeGenJS  → output.js (single-target)',
+              '                                                      └→ CodeGenCpp → .h + .c + .cpp + .js (unified)',
             ]} />
             <P>Each stage is a separate Zig source file. Parser and checker are shared across all targets.</P>
             {[
@@ -117,10 +125,10 @@ export function DocsPage() {
               ['ast.zig', 'AST node definitions — class_decl, method_decl, constructor_decl, new_expr, this_expr'],
               ['parser.zig', 'Recursive descent parser with class/method/constructor/new/this support'],
               ['checker.zig', 'Type checker — scoped symbols, ClassDef, class_t type, this binding'],
-              ['codegen.zig', 'C emitter — interface→struct, console.log→printf (legacy single-file)'],
+              ['codegen.zig', 'C emitter — interface→struct, console.log→printf (single-target -target c)'],
               ['codegen_js.zig', 'JS emitter — strips types, classes→ES6 classes, interfaces omitted'],
-              ['codegen_cpp.zig', 'C++ emitter — multi-file .h/.cpp per class, this→this->, dependency includes'],
-              ['main.zig', 'CLI entry point with -target flag routing'],
+              ['codegen_cpp.zig', 'C++ emitter — unified .h/.c/.cpp with bridge-mode, also per-class -target cpp'],
+              ['main.zig', 'CLI entry point — default all-target, or -target c|cpp|js routing'],
             ].map(([file, desc]) => (
               <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
                 <code mix={css({ fontSize: '13px', color: 'var(--accent)', whiteSpace: 'nowrap', minWidth: '140px' })}>{file}</code>
