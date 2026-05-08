@@ -72,30 +72,28 @@ const COMPILE_BUILD_ZIG =
     \\pub fn build(b: *std.Build) void {
     \\    const optimize = b.standardOptimizeOption(.{});
     \\
-    \\    // Shared module (used by both native and wasm)
-    \\    const common = b.createModule(.{
+    \\    // Shared settings for both targets
+    \\    const common_mod = b.createModule(.{
     \\        .optimize = optimize,
     \\        .link_libc = true,
     \\        .link_libcpp = true,
     \\    });
     \\
-    \\    common.addIncludePath(b.path("ZIGTSCOUT_DIR"));
+    \\    common_mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
     \\
-    \\    // C files
-    \\    common.addCSourceFiles(.{
+    \\    // Add C and C++ sources
+    \\    common_mod.addCSourceFiles(.{
     \\        .root = b.path("ZIGTSCOUT_DIR"),
     \\        .files = &.{"PROJ_NAME.c"},
     \\        .flags = &.{ "-std=c11", "-Wall", "-Wextra" },
     \\    });
-    \\
-    \\    // C++ files
-    \\    common.addCSourceFiles(.{
+    \\    common_mod.addCSourceFiles(.{
     \\        .root = b.path("ZIGTSCOUT_DIR"),
     \\        .files = &.{"PROJ_NAME.cpp"},
     \\        .flags = &.{ "-std=c++17", "-Wall", "-Wextra" },
     \\    });
     \\
-    \\    // === Native executable ===
+    \\    // === Native ===
     \\    const native_mod = b.createModule(.{
     \\        .target = b.graph.host,
     \\        .optimize = optimize,
@@ -112,7 +110,7 @@ const COMPILE_BUILD_ZIG =
     \\    });
     \\    b.installArtifact(exe);
     \\
-    \\    // === Wasm (WASI) executable ===
+    \\    // === Wasm (WASI) - installed to zig-out/wasm/ ===
     \\    const wasm_mod = b.createModule(.{
     \\        .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .wasi }),
     \\        .optimize = optimize,
@@ -127,7 +125,12 @@ const COMPILE_BUILD_ZIG =
     \\        .name = "PROJ_NAME",
     \\        .root_module = wasm_mod,
     \\    });
-    \\    b.installArtifact(wasm);
+    \\
+    \\    // Install Wasm into zig-out/wasm/ subfolder
+    \\    const wasm_install = b.addInstallArtifact(wasm, .{
+    \\        .dest_dir = .{ .override = .{ .custom = "wasm" } },
+    \\    });
+    \\    b.getInstallStep().dependOn(&wasm_install.step);
     \\
     \\    // Run step (native only)
     \\    const run_cmd = b.addRunArtifact(exe);
