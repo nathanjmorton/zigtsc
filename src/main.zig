@@ -7,7 +7,7 @@ const CodeGenCpp = @import("codegen_cpp.zig").CodeGenCpp;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
-const VERSION = "0.8.0";
+const VERSION = "0.9.0";
 
 const HELP_TEXT =
     \\zigtsc — TypeScript subset → C / C++ / JS transpiler & compiler
