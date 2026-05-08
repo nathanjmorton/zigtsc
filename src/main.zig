@@ -7,7 +7,7 @@ const CodeGenCpp = @import("codegen_cpp.zig").CodeGenCpp;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
-const VERSION = "0.5.0";
+const VERSION = "0.6.0";
 
 const HELP_TEXT =
     \\zigtsc — TypeScript subset → C / C++ / JS transpiler & compiler
@@ -79,16 +79,16 @@ const COMPILE_BUILD_ZIG =
     \\        .link_libcpp = true,
     \\    });
     \\
-    \\    common_mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
+    \\    common_mod.addIncludePath(.{ .cwd_relative = "ZIGTSCOUT_DIR" });
     \\
     \\    // Add C and C++ sources
     \\    common_mod.addCSourceFiles(.{
-    \\        .root = b.path("ZIGTSCOUT_DIR"),
+    \\        .root = .{ .cwd_relative = "ZIGTSCOUT_DIR" },
     \\        .files = &.{"PROJ_NAME.c"},
     \\        .flags = &.{ "-std=c11", "-Wall", "-Wextra" },
     \\    });
     \\    common_mod.addCSourceFiles(.{
-    \\        .root = b.path("ZIGTSCOUT_DIR"),
+    \\        .root = .{ .cwd_relative = "ZIGTSCOUT_DIR" },
     \\        .files = &.{"PROJ_NAME.cpp"},
     \\        .flags = &.{ "-std=c++17", "-Wall", "-Wextra" },
     \\    });
@@ -100,9 +100,9 @@ const COMPILE_BUILD_ZIG =
     \\        .link_libc = true,
     \\        .link_libcpp = true,
     \\    });
-    \\    native_mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
-    \\    native_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.c"} });
-    \\    native_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.cpp"} });
+    \\    native_mod.addIncludePath(.{ .cwd_relative = "ZIGTSCOUT_DIR" });
+    \\    native_mod.addCSourceFiles(.{ .root = .{ .cwd_relative = "ZIGTSCOUT_DIR" }, .files = &.{"PROJ_NAME.c"} });
+    \\    native_mod.addCSourceFiles(.{ .root = .{ .cwd_relative = "ZIGTSCOUT_DIR" }, .files = &.{"PROJ_NAME.cpp"} });
     \\
     \\    const exe = b.addExecutable(.{
     \\        .name = "PROJ_NAME",
@@ -117,9 +117,9 @@ const COMPILE_BUILD_ZIG =
     \\        .link_libc = true,
     \\        .link_libcpp = true,
     \\    });
-    \\    wasm_mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
-    \\    wasm_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.c"} });
-    \\    wasm_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.cpp"} });
+    \\    wasm_mod.addIncludePath(.{ .cwd_relative = "ZIGTSCOUT_DIR" });
+    \\    wasm_mod.addCSourceFiles(.{ .root = .{ .cwd_relative = "ZIGTSCOUT_DIR" }, .files = &.{"PROJ_NAME.c"} });
+    \\    wasm_mod.addCSourceFiles(.{ .root = .{ .cwd_relative = "ZIGTSCOUT_DIR" }, .files = &.{"PROJ_NAME.cpp"} });
     \\
     \\    const wasm = b.addExecutable(.{
     \\        .name = "PROJ_NAME",
@@ -233,8 +233,16 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
     defer checker.deinit();
     try checker.check(root);
 
-    // Write transpiled output to src/zigtscout/
-    const out_dir = "src/zigtscout";
+    // Write transpiled output to <input_dir>/zigtscout/
+    var out_dir_buf: [512]u8 = undefined;
+    const out_dir = blk: {
+        const parent = if (std.mem.lastIndexOfScalar(u8, in_path, '/'))
+            |sep| in_path[0..sep]
+        else
+            ".";
+        const len = (std.fmt.bufPrint(&out_dir_buf, "{s}/zigtscout", .{parent}) catch return error.PathTooLong).len;
+        break :blk out_dir_buf[0..len];
+    };
     cwd.createDirPath(io, out_dir) catch {};
 
     // JS output
@@ -311,7 +319,20 @@ fn runCompile(io: std.Io, gpa: std.mem.Allocator, zigtscout_dir: []const u8) !vo
         if (ch.* == '-') ch.* = '_';
     }
 
-    // Generate build.zig from template
+    // Derive the project root (2 levels up from zigtscout_dir: zigtscout -> src -> project root)
+    // so build.zig and zig-out/ land in the demo project, not in the zigtsc source tree.
+    var src_dir = dir.openDir(io, "..", .{}) catch {
+        std.debug.print("error: cannot open parent of '{s}'\n", .{zigtscout_dir});
+        return error.FileNotFound;
+    };
+    defer src_dir.close(io);
+    var project_root_dir = src_dir.openDir(io, "..", .{}) catch {
+        std.debug.print("error: cannot open project root from '{s}'\n", .{zigtscout_dir});
+        return error.FileNotFound;
+    };
+    defer project_root_dir.close(io);
+
+    // Generate build.zig from template — written into the project root
     {
         const with_dir = try zigc.replaceAll(gpa, COMPILE_BUILD_ZIG, "ZIGTSCOUT_DIR", zigtscout_dir);
         defer gpa.free(with_dir);
@@ -319,22 +340,26 @@ fn runCompile(io: std.Io, gpa: std.mem.Allocator, zigtscout_dir: []const u8) !vo
         const build_zig = try zigc.replaceAll(gpa, with_dir, "PROJ_NAME", name);
         defer gpa.free(build_zig);
 
-        cwd.writeFile(io, .{ .sub_path = "build.zig", .data = build_zig }) catch {
+        project_root_dir.writeFile(io, .{ .sub_path = "build.zig", .data = build_zig }) catch {
             std.debug.print("error: cannot write 'build.zig'\n", .{});
             return error.WriteError;
         };
     }
 
-    // Generate build.zig.zon from template
+    // Generate build.zig.zon from template — written into the project root
     {
         const build_zig_zon = try zigc.replaceAll(gpa, COMPILE_BUILD_ZIG_ZON, "PROJ_IDENT", ident);
         defer gpa.free(build_zig_zon);
 
-        cwd.writeFile(io, .{ .sub_path = "build.zig.zon", .data = build_zig_zon }) catch {
+        project_root_dir.writeFile(io, .{ .sub_path = "build.zig.zon", .data = build_zig_zon }) catch {
             std.debug.print("error: cannot write 'build.zig.zon'\n", .{});
             return error.WriteError;
         };
     }
+
+    // Change CWD to the project root so `zig build` outputs zig-out/ there
+    // and execZig's fingerprint helper reads the correct build.zig.zon.
+    try std.process.setCurrentDir(io, project_root_dir);
 
     // Build both native and Wasm
     std.debug.print("Building native + wasm...\n", .{});
