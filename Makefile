@@ -74,8 +74,17 @@ website:
 	npm --prefix www run dev
 
 upgrade:
-	brew update && brew upgrade zigtsc	
+	brew update && brew upgrade zigtsc
+
+# Ship: release, wait for CI to finish, then upgrade the local install.
+# Usage: make ship          (auto-bumps minor)
+#        make ship V=1.0.0  (explicit version)
+ship: release
+	@echo "Waiting for release workflow to appear..."
+	@sleep 5
+	gh run watch $$(gh run list --workflow=release.yml --limit=1 --json databaseId -q '.[0].databaseId') --exit-status
+	$(MAKE) upgrade
 
 .PHONY: all build clean release demo demo-init demo-transpile demo-compile demo-run \
         demo-released demo-released-check demo-released-init demo-released-transpile \
-        demo-released-compile demo-released-run test-all website
+        demo-released-compile demo-released-run test-all website upgrade ship
