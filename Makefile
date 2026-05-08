@@ -80,6 +80,8 @@ upgrade:
 # Usage: make ship          (auto-bumps minor)
 #        make ship V=1.0.0  (explicit version)
 ship: release
+	@command -v gh > /dev/null 2>&1 || \
+		(echo "error: gh CLI not found — install with: brew install gh" && exit 1)
 	@echo "Waiting for release workflow to appear..."
 	@sleep 5
 	gh run watch $$(gh run list --workflow=release.yml --limit=1 --json databaseId -q '.[0].databaseId') --exit-status
