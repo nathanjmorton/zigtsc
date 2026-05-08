@@ -7,6 +7,13 @@ const Op = ast_mod.Op;
 const unpackStringRef = ast_mod.unpackStringRef;
 const Checker = @import("checker.zig").Checker;
 
+const target_configs = std.StaticStringMap(struct {
+    linker_flag: ?[]const u8,
+}).initComptime(.{
+    .{ "native", .{ .linker_flag = null } },
+    .{ "wasm32-wasi", .{ .linker_flag = "-lc" } },
+});
+
 pub const CodeGen = struct {
     tree: *const ast_mod.Ast,
     checker: *const Checker,
@@ -223,5 +230,12 @@ pub const CodeGen = struct {
     }
     fn assignStr(op: Op) []const u8 {
         return switch (op) { .assign => " = ", .add_assign => " += ", .sub_assign => " -= ", .mul_assign => " *= ", .div_assign => " /= ", else => " = " };
+    }
+        pub fn generateBuildCommand(self: *CodeGen, target: []const u8, writer: anytype) !void {
+        if (std.mem.eql(u8, target, "wasm32-wasi")) {
+            try writer.writeAll("zig build-exe -target wasm32-wasi main.c main.cpp -lc -o main.wasm\n");
+        } else {
+            try writer.writeAll("zig build-exe main.c main.cpp -o main\n");
+        }
     }
 };

@@ -70,45 +70,71 @@ const COMPILE_BUILD_ZIG =
     \\const std = @import("std");
     \\
     \\pub fn build(b: *std.Build) void {
-    \\    const target = b.standardTargetOptions(.{});
     \\    const optimize = b.standardOptimizeOption(.{});
     \\
-    \\    const is_wasm = target.result.cpu.arch == .wasm32 or target.result.cpu.arch == .wasm64;
-    \\    const is_freestanding = target.result.os.tag == .freestanding;
-    \\
-    \\    const mod = b.createModule(.{
-    \\        .target = target,
+    \\    // Shared module (used by both native and wasm)
+    \\    const common = b.createModule(.{
     \\        .optimize = optimize,
-    \\        .link_libcpp = !is_freestanding,
+    \\        .link_libc = true,
+    \\        .link_libcpp = true,
     \\    });
     \\
-    \\    mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
+    \\    common.addIncludePath(b.path("ZIGTSCOUT_DIR"));
     \\
-    \\    mod.addCSourceFiles(.{
+    \\    // C files
+    \\    common.addCSourceFiles(.{
     \\        .root = b.path("ZIGTSCOUT_DIR"),
     \\        .files = &.{"PROJ_NAME.c"},
     \\        .flags = &.{ "-std=c11", "-Wall", "-Wextra" },
     \\    });
     \\
-    \\    mod.addCSourceFiles(.{
+    \\    // C++ files
+    \\    common.addCSourceFiles(.{
     \\        .root = b.path("ZIGTSCOUT_DIR"),
     \\        .files = &.{"PROJ_NAME.cpp"},
     \\        .flags = &.{ "-std=c++17", "-Wall", "-Wextra" },
     \\    });
     \\
+    \\    // === Native executable ===
+    \\    const native_mod = b.createModule(.{
+    \\        .target = b.graph.host,
+    \\        .optimize = optimize,
+    \\        .link_libc = true,
+    \\        .link_libcpp = true,
+    \\    });
+    \\    native_mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
+    \\    native_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.c"} });
+    \\    native_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.cpp"} });
+    \\
     \\    const exe = b.addExecutable(.{
     \\        .name = "PROJ_NAME",
-    \\        .root_module = mod,
+    \\        .root_module = native_mod,
     \\    });
     \\    b.installArtifact(exe);
     \\
-    \\    if (!is_wasm) {
-    \\        const run_cmd = b.addRunArtifact(exe);
-    \\        run_cmd.step.dependOn(b.getInstallStep());
-    \\        if (b.args) |args| run_cmd.addArgs(args);
-    \\        const run_step = b.step("run", "Build and run");
-    \\        run_step.dependOn(&run_cmd.step);
-    \\    }
+    \\    // === Wasm (WASI) executable ===
+    \\    const wasm_mod = b.createModule(.{
+    \\        .target = b.resolveTargetQuery(.{ .cpu_arch = .wasm32, .os_tag = .wasi }),
+    \\        .optimize = optimize,
+    \\        .link_libc = true,
+    \\        .link_libcpp = true,
+    \\    });
+    \\    wasm_mod.addIncludePath(b.path("ZIGTSCOUT_DIR"));
+    \\    wasm_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.c"} });
+    \\    wasm_mod.addCSourceFiles(.{ .root = b.path("ZIGTSCOUT_DIR"), .files = &.{"PROJ_NAME.cpp"} });
+    \\
+    \\    const wasm = b.addExecutable(.{
+    \\        .name = "PROJ_NAME",
+    \\        .root_module = wasm_mod,
+    \\    });
+    \\    b.installArtifact(wasm);
+    \\
+    \\    // Run step (native only)
+    \\    const run_cmd = b.addRunArtifact(exe);
+    \\    run_cmd.step.dependOn(b.getInstallStep());
+    \\    if (b.args) |args| run_cmd.addArgs(args);
+    \\    const run_step = b.step("run", "Run the native app");
+    \\    run_step.dependOn(&run_cmd.step);
     \\}
     \\
 ;
@@ -166,23 +192,27 @@ fn runInit(io: std.Io, dir: []const u8) !void {
 
 // ── transpile ────────────────────────────────────────────────────────────────
 
-fn runTranspile(io: std.Io, allocator: std.mem.Allocator, in_path: []const u8) !void {
+fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
     const cwd = std.Io.Dir.cwd();
-    const source = cwd.readFileAlloc(io, in_path, allocator, .unlimited) catch {
+
+    // Read source file
+    const source = cwd.readFileAlloc(io, in_path, gpa, .unlimited) catch {
         std.debug.print("error: cannot read '{s}'\n", .{in_path});
         return error.FileNotFound;
     };
-    defer allocator.free(source);
+    defer gpa.free(source);
 
     // Derive basename from input filename
     var basename: []const u8 = in_path;
     if (std.mem.lastIndexOfScalar(u8, in_path, '/')) |sep| {
         basename = in_path[sep + 1 ..];
     }
-    if (std.mem.endsWith(u8, basename, ".ts")) basename = basename[0 .. basename.len - 3];
+    if (std.mem.endsWith(u8, basename, ".ts")) {
+        basename = basename[0 .. basename.len - 3];
+    }
 
     // Parse
-    var parser = Parser.init(source, allocator);
+    var parser = Parser.init(source, gpa);
     defer parser.deinit();
     const root = try parser.parse();
     defer parser.tree.deinit();
@@ -196,7 +226,7 @@ fn runTranspile(io: std.Io, allocator: std.mem.Allocator, in_path: []const u8) !
     }
 
     // Type check
-    var checker = Checker.init(&parser.tree, allocator);
+    var checker = Checker.init(&parser.tree, gpa);
     defer checker.deinit();
     try checker.check(root);
 
@@ -204,12 +234,13 @@ fn runTranspile(io: std.Io, allocator: std.mem.Allocator, in_path: []const u8) !
     const out_dir = "src/zigtscout";
     cwd.createDirPath(io, out_dir) catch {};
 
-    // JS
-    var js_gen = CodeGenJS.init(&parser.tree, allocator);
+    // JS output
+    var js_gen = CodeGenJS.init(&parser.tree, gpa);
     defer js_gen.deinit();
     const js_source = try js_gen.generate(root);
-    const js_path = try std.fmt.allocPrint(allocator, "{s}/{s}.js", .{ out_dir, basename });
-    defer allocator.free(js_path);
+    const js_path = try std.fmt.allocPrint(gpa, "{s}/{s}.js", .{ out_dir, basename });
+    defer gpa.free(js_path);
+
     cwd.writeFile(io, .{ .sub_path = js_path, .data = js_source }) catch {
         std.debug.print("error: cannot write '{s}'\n", .{js_path});
         return error.WriteError;
@@ -217,12 +248,21 @@ fn runTranspile(io: std.Io, allocator: std.mem.Allocator, in_path: []const u8) !
     std.debug.print("wrote {s} ({d} bytes)\n", .{ js_path, js_source.len });
 
     // Unified .h + .cpp + .c
-    var cpp_gen = CodeGenCpp.init(&parser.tree, &checker, allocator);
+    var cpp_gen = CodeGenCpp.init(&parser.tree, &checker, gpa);
     defer cpp_gen.deinit();
     const files = try cpp_gen.generateUnified(root, basename);
+    defer {
+        for (files) |file| {
+            gpa.free(file.name);
+            gpa.free(file.content);
+        }
+        gpa.free(files);
+    }
+
     for (files) |file| {
-        const out_path = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ out_dir, file.name });
-        defer allocator.free(out_path);
+        const out_path = try std.fmt.allocPrint(gpa, "{s}/{s}", .{ out_dir, file.name });
+        defer gpa.free(out_path);
+
         cwd.writeFile(io, .{ .sub_path = out_path, .data = file.content }) catch {
             std.debug.print("error: cannot write '{s}'\n", .{out_path});
             return error.WriteError;
@@ -233,40 +273,7 @@ fn runTranspile(io: std.Io, allocator: std.mem.Allocator, in_path: []const u8) !
 
 // ── compile ──────────────────────────────────────────────────────────────────
 
-fn copyWasmArtifact(io: std.Io, allocator: std.mem.Allocator, tmp_dir: []const u8, name: []const u8) !void {
-    const cwd = std.Io.Dir.cwd();
-    const tmp_bin_path = try std.fmt.allocPrint(allocator, "{s}/bin", .{tmp_dir});
-    defer allocator.free(tmp_bin_path);
-
-    var wasm_bin = cwd.openDir(io, tmp_bin_path, .{ .iterate = true }) catch {
-        std.debug.print("note: wasm output directory '{s}' not found\n", .{tmp_bin_path});
-        return;
-    };
-    defer wasm_bin.close(io);
-
-    cwd.createDirPath(io, "zig-out/wasm") catch {};
-
-    var iter = wasm_bin.iterate();
-    while (try iter.next(io)) |entry| {
-        if (entry.kind == .directory) continue;
-
-        const wasm_data = wasm_bin.readFileAlloc(io, entry.name, allocator, .unlimited) catch continue;
-        defer allocator.free(wasm_data);
-
-        const wasm_dest = try std.fmt.allocPrint(allocator, "zig-out/wasm/{s}.wasm", .{name});
-        defer allocator.free(wasm_dest);
-        cwd.writeFile(io, .{ .sub_path = wasm_dest, .data = wasm_data }) catch {
-            std.debug.print("error: cannot write '{s}'\n", .{wasm_dest});
-            return error.WriteError;
-        };
-        std.debug.print("wrote {s}\n", .{wasm_dest});
-        return;
-    }
-
-    std.debug.print("note: no wasm artifact found in '{s}'\n", .{tmp_bin_path});
-}
-
-fn runCompile(io: std.Io, allocator: std.mem.Allocator, zigtscout_dir: []const u8) !void {
+fn runCompile(io: std.Io, gpa: std.mem.Allocator, zigtscout_dir: []const u8) !void {
     const cwd = std.Io.Dir.cwd();
 
     // Validate the zigtscout directory exists
@@ -278,13 +285,13 @@ fn runCompile(io: std.Io, allocator: std.mem.Allocator, zigtscout_dir: []const u
 
     // Scan for .c file to determine the project basename
     var name_buf: ?[]u8 = null;
-    defer if (name_buf) |buf| allocator.free(buf);
+    defer if (name_buf) |buf| gpa.free(buf);
 
     var iter = dir.iterate();
     while (try iter.next(io)) |entry| {
         if (entry.kind == .directory) continue;
         if (std.mem.endsWith(u8, entry.name, ".c") and !std.mem.endsWith(u8, entry.name, ".cpp")) {
-            name_buf = try allocator.dupe(u8, entry.name[0 .. entry.name.len - 2]);
+            name_buf = try gpa.dupe(u8, entry.name[0 .. entry.name.len - 2]);
             break;
         }
     }
@@ -294,19 +301,21 @@ fn runCompile(io: std.Io, allocator: std.mem.Allocator, zigtscout_dir: []const u
         return error.FileNotFound;
     };
 
-    // Make a valid Zig identifier from the name (replace hyphens)
-    const ident = try allocator.dupe(u8, name);
-    defer allocator.free(ident);
+    // Make a valid Zig identifier from the name (replace hyphens, etc.)
+    const ident = try gpa.dupe(u8, name);
+    defer gpa.free(ident);
     for (ident) |*ch| {
         if (ch.* == '-') ch.* = '_';
     }
 
     // Generate build.zig from template
     {
-        const with_dir = try zigc.replaceAll(allocator, COMPILE_BUILD_ZIG, "ZIGTSCOUT_DIR", zigtscout_dir);
-        defer allocator.free(with_dir);
-        const build_zig = try zigc.replaceAll(allocator, with_dir, "PROJ_NAME", name);
-        defer allocator.free(build_zig);
+        const with_dir = try zigc.replaceAll(gpa, COMPILE_BUILD_ZIG, "ZIGTSCOUT_DIR", zigtscout_dir);
+        defer gpa.free(with_dir);
+
+        const build_zig = try zigc.replaceAll(gpa, with_dir, "PROJ_NAME", name);
+        defer gpa.free(build_zig);
+
         cwd.writeFile(io, .{ .sub_path = "build.zig", .data = build_zig }) catch {
             std.debug.print("error: cannot write 'build.zig'\n", .{});
             return error.WriteError;
@@ -315,42 +324,76 @@ fn runCompile(io: std.Io, allocator: std.mem.Allocator, zigtscout_dir: []const u
 
     // Generate build.zig.zon from template
     {
-        const build_zig_zon = try zigc.replaceAll(allocator, COMPILE_BUILD_ZIG_ZON, "PROJ_IDENT", ident);
-        defer allocator.free(build_zig_zon);
+        const build_zig_zon = try zigc.replaceAll(gpa, COMPILE_BUILD_ZIG_ZON, "PROJ_IDENT", ident);
+        defer gpa.free(build_zig_zon);
+
         cwd.writeFile(io, .{ .sub_path = "build.zig.zon", .data = build_zig_zon }) catch {
             std.debug.print("error: cannot write 'build.zig.zon'\n", .{});
             return error.WriteError;
         };
     }
 
-    // Native build
-    std.debug.print("Building native binary...\n", .{});
-    try zigc.execZig(io, allocator, &.{ "zig", "build" });
-    std.debug.print("wrote zig-out/bin/{s}\n", .{name});
+    // Build both native and Wasm
+    std.debug.print("Building native + wasm...\n", .{});
+    try zigc.execZig(io, gpa, &.{ "zig", "build" });
 
-    // Wasm build (best-effort)
-    std.debug.print("Building wasm...\n", .{});
-    const wasm_tmp = ".zig-wasm-out";
-    zigc.execZig(io, allocator, &.{ "zig", "build", "-Dtarget=wasm32-freestanding", "--prefix", wasm_tmp }) catch {
-        std.debug.print("note: wasm build skipped (build failed)\n", .{});
+    std.debug.print("\n✅ Build successful!\n", .{});
+    std.debug.print("   Native:   zig-out/bin/{s}\n", .{name});
+    std.debug.print("   Wasm:     zig-out/wasm/{s}.wasm\n\n", .{name});
+
+    std.debug.print("Run with:\n", .{});
+    std.debug.print("   zigtsc run zig-out/bin/{s}\n", .{name});
+    std.debug.print("   zigtsc run zig-out/wasm/{s}.wasm\n", .{name});
+}
+
+// ── run ──────────────────────────────────────────────────────────────────
+fn runBinary(gpa: std.mem.Allocator, path: []const u8, io: std.Io) !void {
+    if (std.mem.endsWith(u8, path, ".wasm")) {
+        std.debug.print("Running Wasm module with wasmtime...\n", .{});
+
+        const result = std.process.run(gpa, io, .{
+            .argv = &.{ "wasmtime", path },
+        }) catch |err| {
+            if (err == error.FileNotFound) {
+                std.debug.print("error: 'wasmtime' command not found in PATH.\n", .{});
+                std.debug.print("   Install with: brew install wasmtime\n", .{});
+                return;
+            }
+            return err;
+        };
+        defer {
+            gpa.free(result.stdout);
+            gpa.free(result.stderr);
+        }
+
+        std.debug.print("{s}", .{result.stdout});
+        if (result.stderr.len > 0) {
+            std.debug.print("{s}", .{result.stderr});
+        }
         return;
-    };
-    try copyWasmArtifact(io, allocator, wasm_tmp, name);
-    cwd.deleteTree(io, wasm_tmp) catch {};
+    }
+
+    // Native binary - direct execution
+    std.debug.print("Running native binary: {s}\n", .{path});
+
+    var child = try std.process.spawn(io, .{
+        .argv = &.{path},
+    });
+    _ = try child.wait(io); // ← fixed: now passes io
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
 
-pub fn main(init_arg: std.process.Init) !void {
-    const allocator = init_arg.gpa;
-    const io = init_arg.io;
+pub fn main(init: std.process.Init) !void {
+    const gpa = init.gpa; // ← changed from .allocator
+    const io = init.io;
 
     // Collect args (skip argv[0])
     var args_list: std.ArrayList([]const u8) = .empty;
-    defer args_list.deinit(allocator);
-    var it = std.process.Args.Iterator.init(init_arg.minimal.args);
+    defer args_list.deinit(gpa);
+    var it = std.process.Args.Iterator.init(init.minimal.args);
     _ = it.skip();
-    while (it.next()) |arg| try args_list.append(allocator, arg);
+    while (it.next()) |arg| try args_list.append(gpa, arg);
     const args = args_list.items;
 
     if (args.len < 1) {
@@ -376,7 +419,7 @@ pub fn main(init_arg: std.process.Init) !void {
             std.debug.print("error: missing input file\nUsage: zigtsc transpile <input.ts>\n", .{});
             return error.MissingArgument;
         }
-        return runTranspile(io, allocator, args[1]);
+        return runTranspile(io, gpa, args[1]);
     }
 
     // compile
@@ -385,12 +428,21 @@ pub fn main(init_arg: std.process.Init) !void {
             std.debug.print("error: missing zigtscout directory\nUsage: zigtsc compile <zigtscout-dir>\n", .{});
             return error.MissingArgument;
         }
-        return runCompile(io, allocator, args[1]);
+        return runCompile(io, gpa, args[1]);
     }
 
     // upgrade
     if (std.mem.eql(u8, args[0], "upgrade")) {
-        return zigc.cmdUpgrade(io, allocator, "zigtsc", VERSION, "nathanjmorton/zigtsc");
+        return zigc.cmdUpgrade(io, gpa, "zigtsc", VERSION, "nathanjmorton/zigtsc");
+    }
+
+    // run
+    if (std.mem.eql(u8, args[0], "run")) {
+        if (args.len < 2) {
+            std.debug.print("usage: zigtsc run <path-to-binary-or-wasm>\n", .{});
+            return;
+        }
+        return runBinary(gpa, args[1], io);
     }
 
     std.debug.print("error: unknown command '{s}'\n", .{args[0]});
