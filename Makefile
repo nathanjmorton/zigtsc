@@ -1,6 +1,7 @@
 # Makefile for ZigTSC project
 
-ZIGTSC := ./zig-out/bin/zigtsc
+ZIGTSC         := ./zig-out/bin/zigtsc
+ZIGTSC_RELEASED := $(shell which zigtsc 2>/dev/null || echo $(HOME)/.zigtsc/bin/zigtsc)
 
 # Default target
 all: build demo
@@ -39,7 +40,39 @@ demo-run:
 	$(ZIGTSC) run /tmp/demo/zig-out/bin/main && \
 	$(ZIGTSC) run /tmp/demo/zig-out/wasm/main.wasm
 
+# ── demo-released ─────────────────────────────────────────────────────────────
+
+# Run all demo tasks against the installed (released) binary
+demo-released: demo-released-check demo-released-init demo-released-transpile demo-released-compile demo-released-run
+
+demo-released-check:
+	@test -x "$(ZIGTSC_RELEASED)" || \
+		(echo "error: released zigtsc not found — install via 'brew install zigtsc' or install.sh" && exit 1)
+	@echo "Testing released binary: $(ZIGTSC_RELEASED)"
+
+demo-released-init:
+	rm -rf /tmp/demo-released && \
+	mkdir -p /tmp/demo-released && \
+	$(ZIGTSC_RELEASED) init /tmp/demo-released
+
+demo-released-transpile:
+	$(ZIGTSC_RELEASED) transpile /tmp/demo-released/src/main.ts
+
+demo-released-compile:
+	$(ZIGTSC_RELEASED) compile /tmp/demo-released/src/zigtscout
+
+demo-released-run:
+	$(ZIGTSC_RELEASED) run /tmp/demo-released/zig-out/bin/main && \
+	$(ZIGTSC_RELEASED) run /tmp/demo-released/zig-out/wasm/main.wasm
+
+# ── test-all ───────────────────────────────────────────────────────────────────
+
+# Verify both the local build and the installed release work end-to-end
+test-all: all demo-released
+
 website:
 	npm --prefix www run dev
 
-.PHONY: all build clean release demo demo-init demo-transpile demo-compile demo-run website
+.PHONY: all build clean release demo demo-init demo-transpile demo-compile demo-run \
+        demo-released demo-released-check demo-released-init demo-released-transpile \
+        demo-released-compile demo-released-run test-all website
