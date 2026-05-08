@@ -5,6 +5,21 @@ import { routes } from "../routes.ts";
 const FONT_STACK =
   "'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace";
 
+// Hexagon divided into 3 equal 120° wedges: Zig (orange), TypeScript (blue), C (navy)
+const FAVICON =
+  "data:image/svg+xml," +
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>" +
+  "<polygon points='16,16 16,3 27.26,9.5 27.26,22.5' fill='%23F7A41D'/>" +
+  "<polygon points='16,16 27.26,22.5 16,29 4.74,22.5' fill='%23044F88'/>" +
+  "<polygon points='16,16 4.74,22.5 4.74,9.5 16,3' fill='%233178C6'/>" +
+  "<line x1='16' y1='3' x2='16' y2='16' stroke='%230c0d10' stroke-width='1.5'/>" +
+  "<line x1='27.26' y1='22.5' x2='16' y2='16' stroke='%230c0d10' stroke-width='1.5'/>" +
+  "<line x1='4.74' y1='22.5' x2='16' y2='16' stroke='%230c0d10' stroke-width='1.5'/>" +
+  "<text x='22' y='15' font-family='system-ui' font-size='7' font-weight='700' fill='%230c0d10' text-anchor='middle'>Z</text>" +
+  "<text x='16' y='25' font-family='system-ui' font-size='7' font-weight='700' fill='white' text-anchor='middle'>C</text>" +
+  "<text x='10' y='15' font-family='system-ui' font-size='5.5' font-weight='700' fill='white' text-anchor='middle'>TS</text>" +
+  "</svg>";
+
 export function HomePage() {
   return () => (
     <html lang="en">
@@ -12,6 +27,7 @@ export function HomePage() {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <meta name="color-scheme" content="light dark" />
+        <link rel="icon" type="image/svg+xml" href={FAVICON} />
         <title>zigtsc — TypeScript subset → C / C++ / JS compiler</title>
         <meta
           name="description"
