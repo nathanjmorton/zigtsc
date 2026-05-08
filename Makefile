@@ -1,51 +1,45 @@
 # Makefile for ZigTSC project
 
-# Default target
-all: executable clean init transpile compile run
+ZIGTSC := ./zig-out/bin/zigtsc
 
-# Make scripts executable
-executable:
-	chmod -R +x .
+# Default target
+all: build demo
+
+# Build the zigtsc binary
+build:
+	zig build
 
 # Clean Zig cache and output
 clean:
-	cd /Users/nathanjmorton/codes/zigtsc && rm -rf .zig-cache/ zig-out/ zig-pkg/ 
+	rm -rf .zig-cache/ zig-out/ zig-pkg/
 
-# Release: bump minor version, commit, tag, push. CI does the rest.
+# Release: clean build, bump version, commit, tag, push.
 # Usage: make release          (auto-bumps minor, e.g. 0.5.0 → 0.6.0)
 #        make release V=1.0.0  (explicit version)
-release:
+release: clean build
 	./scripts/release.sh $(V)
 
-# demo
-# Initialize project in temp folder
-init:
+# ── demo ──────────────────────────────────────────────────────────────────────
+
+# Run all demo tasks in order (builds first)
+demo: build demo-init demo-transpile demo-compile demo-run
+
+demo-init:
 	rm -rf /tmp/demo && \
 	mkdir -p /tmp/demo && \
-	cd /tmp/demo && \
-	zigtsc init .
+	$(ZIGTSC) init /tmp/demo
 
-# Transpile TypeScript
-transpile:
-	cd /tmp/demo && \
-	zigtsc transpile src/main.ts
+demo-transpile:
+	$(ZIGTSC) transpile /tmp/demo/src/main.ts
 
-# Compile
-compile:
-	cd /tmp/demo && \
-	zigtsc compile src/zigtscout
+demo-compile:
+	$(ZIGTSC) compile /tmp/demo/src/zigtscout
 
-# Run the compiled binaries
-run:
-	cd /tmp/demo && \
-	zigtsc run zig-out/bin/main && \
-	zigtsc run zig-out/wasm/main.wasm
-
-# Run all demo tasks in order
-demo: init transpile compile run
+demo-run:
+	$(ZIGTSC) run /tmp/demo/zig-out/bin/main && \
+	$(ZIGTSC) run /tmp/demo/zig-out/wasm/main.wasm
 
 website:
 	npm --prefix www run dev
 
-
-.PHONY: all executable clean init transpile compile run release demo
+.PHONY: all build clean release demo demo-init demo-transpile demo-compile demo-run website
