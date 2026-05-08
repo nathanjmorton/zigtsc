@@ -9,29 +9,28 @@ executable:
 
 # Clean Zig cache and output
 clean:
-	cd /Users/nathanjmorton/codes/zigtsc && rm -rf .zig-cache/ zig-out/ zig-pkg/ temp
+	cd /Users/nathanjmorton/codes/zigtsc && rm -rf .zig-cache/ zig-out/ zig-pkg/ 
 
 # Initialize project in temp folder
 init:
-	cd /Users/nathanjmorton/codes/zigtsc && \
-	rm -rf temp && \
-	mkdir -p temp && \
-	cd temp && \
+	rm -rf /tmp/demo && \
+	mkdir -p /tmp/demo && \
+	cd /tmp/demo && \
 	zigtsc init .
 
 # Transpile TypeScript
 transpile:
-	cd /Users/nathanjmorton/codes/zigtsc/temp && \
+	cd /tmp/demo && \
 	zigtsc transpile src/main.ts
 
 # Compile
 compile:
-	cd /Users/nathanjmorton/codes/zigtsc/temp && \
+	cd /tmp/demo && \
 	zigtsc compile src/zigtscout
 
 # Run the compiled binaries
 run:
-	cd /Users/nathanjmorton/codes/zigtsc/temp && \
+	cd /tmp/demo && \
 	zigtsc run zig-out/bin/main && \
 	zigtsc run zig-out/wasm/main.wasm
 
