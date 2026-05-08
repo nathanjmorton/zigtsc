@@ -17,6 +17,7 @@ clean:
 release:
 	./scripts/release.sh $(V)
 
+# demo
 # Initialize project in temp folder
 init:
 	rm -rf /tmp/demo && \
@@ -43,7 +44,8 @@ run:
 # Run all demo tasks in order
 demo: init transpile compile run
 
-
+website:
+	npm --prefix www run dev
 
 
 .PHONY: all executable clean init transpile compile run release demo
