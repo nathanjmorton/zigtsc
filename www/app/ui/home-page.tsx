@@ -62,6 +62,24 @@ export function HomePage() {
   );
 }
 
+// ── Logo ─────────────────────────────────────────────────────────────────────
+
+function ZigtscLogo() {
+  return ({ size = 32 }: { size?: number }) => (
+    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
+      <polygon points="16,16 16,3 27.26,9.5 27.26,22.5" fill="#F7A41D" />
+      <polygon points="16,16 27.26,22.5 16,29 4.74,22.5" fill="#044F88" />
+      <polygon points="16,16 4.74,22.5 4.74,9.5 16,3" fill="#3178C6" />
+      <line x1="16" y1="3" x2="16" y2="16" stroke="#0c0d10" strokeWidth="1.5" />
+      <line x1="27.26" y1="22.5" x2="16" y2="16" stroke="#0c0d10" strokeWidth="1.5" />
+      <line x1="4.74" y1="22.5" x2="16" y2="16" stroke="#0c0d10" strokeWidth="1.5" />
+      <text x="22" y="15" fontFamily="system-ui" fontSize="7" fontWeight="700" fill="#0c0d10" textAnchor="middle">Z</text>
+      <text x="16" y="25" fontFamily="system-ui" fontSize="7" fontWeight="700" fill="white" textAnchor="middle">C</text>
+      <text x="10" y="15" fontFamily="system-ui" fontSize="5.5" fontWeight="700" fill="white" textAnchor="middle">TS</text>
+    </svg>
+  );
+}
+
 // ── Hero ──────────────────────────────────────────────────────────────────────
 
 function Hero() {
@@ -76,18 +94,21 @@ function Hero() {
         textAlign: "center",
       })}
     >
-      <h1
-        mix={css({
-          margin: 0,
-          fontSize: "48px",
-          fontWeight: 700,
-          letterSpacing: "-0.02em",
-          lineHeight: 1.1,
-          "@media (max-width: 600px)": { fontSize: "32px" },
-        })}
-      >
-        zigtsc
-      </h1>
+      <div mix={css({ display: "flex", alignItems: "center", gap: "16px" })}>
+        <ZigtscLogo size={52} />
+        <h1
+          mix={css({
+            margin: 0,
+            fontSize: "48px",
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.1,
+            "@media (max-width: 600px)": { fontSize: "32px" },
+          })}
+        >
+          zigtsc
+        </h1>
+      </div>
       <p
         mix={css({
           margin: 0,
@@ -401,6 +422,7 @@ function Footer() {
         "& a:hover": { color: "var(--text-primary)" },
       })}
     >
+      <ZigtscLogo size={36} />
       <div mix={css({ display: "flex", gap: "16px" })}>
         <a href="https://github.com/nathanjmorton/zigtsc">GitHub</a>
         <a href={routes.docs.href()}>Docs</a>

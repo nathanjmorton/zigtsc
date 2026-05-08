@@ -47,8 +47,12 @@ export function DocsPage() {
       </head>
       <body mix={css(bodyStyles)}>
         <nav mix={css(navStyles)}>
-          <a href={routes.home.href()} mix={css(navLinkStyles)}>
-            ← zigtsc
+          <a
+            href={routes.home.href()}
+            mix={css({ ...navLinkStyles, display: "flex", alignItems: "center", gap: "8px" })}
+          >
+            <ZigtscLogo size={20} />
+            zigtsc
           </a>
           <a
             href="https://github.com/nathanjmorton/zigtsc"
@@ -459,8 +463,13 @@ export function DocsPage() {
               fontSize: "12px",
               color: "var(--text-tertiary)",
               textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "12px",
             })}
           >
+            <ZigtscLogo size={36} />
             <a
               href={routes.home.href()}
               mix={css({
@@ -475,6 +484,24 @@ export function DocsPage() {
         </main>
       </body>
     </html>
+  );
+}
+
+// ── Logo ─────────────────────────────────────────────────────────────────────
+
+function ZigtscLogo() {
+  return ({ size = 32 }: { size?: number }) => (
+    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
+      <polygon points="16,16 16,3 27.26,9.5 27.26,22.5" fill="#F7A41D" />
+      <polygon points="16,16 27.26,22.5 16,29 4.74,22.5" fill="#044F88" />
+      <polygon points="16,16 4.74,22.5 4.74,9.5 16,3" fill="#3178C6" />
+      <line x1="16" y1="3" x2="16" y2="16" stroke="#0c0d10" strokeWidth="1.5" />
+      <line x1="27.26" y1="22.5" x2="16" y2="16" stroke="#0c0d10" strokeWidth="1.5" />
+      <line x1="4.74" y1="22.5" x2="16" y2="16" stroke="#0c0d10" strokeWidth="1.5" />
+      <text x="22" y="15" fontFamily="system-ui" fontSize="7" fontWeight="700" fill="#0c0d10" textAnchor="middle">Z</text>
+      <text x="16" y="25" fontFamily="system-ui" fontSize="7" fontWeight="700" fill="white" textAnchor="middle">C</text>
+      <text x="10" y="15" fontFamily="system-ui" fontSize="5.5" fontWeight="700" fill="white" textAnchor="middle">TS</text>
+    </svg>
   );
 }
 
