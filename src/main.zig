@@ -17,6 +17,7 @@ const HELP_TEXT =
     \\  zigtsc transpile <input.ts>            # transpile → src/zigtscout/
     \\  zigtsc compile <zigtscout-dir>         # compile → zig-out/bin + zig-out/wasm
     \\  zigtsc run <binary-or-wasm>            # run native binary or wasm module
+    \\  zigtsc version                         # print version
     \\  zigtsc upgrade                         # upgrade to latest release
     \\
     \\Quickstart:
@@ -474,6 +475,12 @@ pub fn main(init: std.process.Init) !void {
             return error.MissingArgument;
         }
         return runCompile(io, gpa, args[1]);
+    }
+
+    // version
+    if (std.mem.eql(u8, args[0], "version") or std.mem.eql(u8, args[0], "--version") or std.mem.eql(u8, args[0], "-v")) {
+        std.debug.print("{s}\n", .{VERSION});
+        return;
     }
 
     // upgrade
