@@ -96,6 +96,7 @@ export function DocsPage() {
                 "zigtsc run <binary-or-wasm>",
                 "Run a native binary or .wasm module (via wasmtime)",
               ],
+              ["zigtsc version", "Print the installed version"],
               ["zigtsc upgrade", "Update to the latest release"],
             ].map(([cmd, desc]) => (
               <div
