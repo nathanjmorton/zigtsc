@@ -34,4 +34,10 @@ run:
 	zigtsc run zig-out/bin/main && \
 	zigtsc run zig-out/wasm/main.wasm
 
-.PHONY: all executable clean init transpile compile run
+# Release: bump minor version, commit, tag, push. CI does the rest.
+# Usage: make release          (auto-bumps minor, e.g. 0.5.0 → 0.6.0)
+#        make release V=1.0.0  (explicit version)
+release:
+	./scripts/release.sh $(V)
+
+.PHONY: all executable clean init transpile compile run release

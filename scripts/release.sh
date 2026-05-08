@@ -1,43 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build release binaries for all platforms and create a GitHub release.
-# Usage: ./scripts/release.sh v0.1.0
+# Release zigtsc: bump version, commit, tag, and push.
+# CI handles building, creating the GitHub release, and updating Homebrew.
+#
+# Usage: ./scripts/release.sh [<version>]
+#   No arg  → auto-bump minor (e.g. 0.5.0 → 0.6.0)
+#   With arg → use explicit version
 
-VERSION="${1:?Usage: release.sh <version>}"
-DIST="dist"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-rm -rf "$DIST"
-mkdir -p "$DIST"
+# Read current version from src/main.zig
+CURRENT=$(grep -o 'const VERSION = "[^"]*"' "$REPO_ROOT/src/main.zig" | grep -o '[0-9][0-9.]*')
 
-TARGETS=(
-  "aarch64-macos"
-  "x86_64-macos"
-  "aarch64-linux-gnu"
-  "x86_64-linux-gnu"
-)
+if [[ -n "${1:-}" ]]; then
+  VERSION="$1"
+else
+  # Auto-bump: increment minor, reset patch
+  IFS='.' read -r major minor patch <<< "$CURRENT"
+  VERSION="${major}.$((minor + 1)).${patch}"
+fi
 
-for target in "${TARGETS[@]}"; do
-  echo "Building zigtsc-$target..."
-  zig build -Doptimize=ReleaseFast -Dtarget="$target"
-  cp zig-out/bin/zigtsc "$DIST/zigtsc"
-  tar -czf "$DIST/zigtsc-$target.tar.gz" -C "$DIST" zigtsc
-  rm "$DIST/zigtsc"
-  echo "  → dist/zigtsc-$target.tar.gz"
-done
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "error: version must be semver (e.g. 0.6.0)" >&2
+  exit 1
+fi
+
+echo "Releasing: v${CURRENT} → v${VERSION}"
+
+# Update VERSION in src/main.zig
+if [[ "$(uname)" == "Darwin" ]]; then
+  sed -i '' "s/const VERSION = \".*\";/const VERSION = \"${VERSION}\";/" "$REPO_ROOT/src/main.zig"
+else
+  sed -i "s/const VERSION = \".*\";/const VERSION = \"${VERSION}\";/" "$REPO_ROOT/src/main.zig"
+fi
+
+git -C "$REPO_ROOT" add src/main.zig
+git -C "$REPO_ROOT" commit -m "release: v${VERSION}"
+git -C "$REPO_ROOT" tag "v${VERSION}"
+git -C "$REPO_ROOT" push
+git -C "$REPO_ROOT" push --tags
 
 echo ""
-echo "Creating GitHub release $VERSION..."
-gh release create "$VERSION" \
-  --title "$VERSION" \
-  --notes "zigtsc $VERSION" \
-  "$DIST"/zigtsc-*.tar.gz
-
-echo ""
-echo "Release $VERSION created."
-echo ""
-echo "Next steps:"
-echo "  1. Update homebrew-zigtsc formula with new sha256 hashes:"
-for target in "${TARGETS[@]}"; do
-  echo "     shasum -a 256 $DIST/zigtsc-$target.tar.gz"
-done
+echo "Pushed v${VERSION}. CI will:"
+echo "  1. Build release binaries"
+echo "  2. Create GitHub release"
+echo "  3. Update Homebrew tap"
