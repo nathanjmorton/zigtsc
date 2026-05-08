@@ -16,12 +16,15 @@ const HELP_TEXT =
     \\  zigtsc init <directory>                # scaffold project with src/main.ts
     \\  zigtsc transpile <input.ts>            # transpile → src/zigtscout/
     \\  zigtsc compile <zigtscout-dir>         # compile → zig-out/bin + zig-out/wasm
+    \\  zigtsc run <binary-or-wasm>            # run native binary or wasm module
     \\  zigtsc upgrade                         # upgrade to latest release
     \\
-    \\Workflow:
-    \\  zigtsc init myapp && cd myapp
-    \\  zigtsc transpile src/main.ts
-    \\  zigtsc compile src/zigtscout
+    \\Quickstart:
+    \\  zigtsc init demo
+    \\  zigtsc transpile demo/src/main.ts
+    \\  zigtsc compile demo/src/zigtscout
+    \\  zigtsc run demo/zig-out/bin/main
+    \\  zigtsc run demo/zig-out/wasm/main.wasm
     \\
     \\Docs:   https://zigtsc.nathanjmorton.com/docs
     \\GitHub: https://github.com/nathanjmorton/zigtsc
