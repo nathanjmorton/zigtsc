@@ -80,23 +80,23 @@ export function DocsPage() {
 
           <Section title="Command reference">
             {[
-              ["zigtsc", "Transpile main.ts in cwd → .h .c .cpp .js"],
               [
-                "zigtsc <file.ts>",
-                "Transpile to all targets (4 files named after input)",
-              ],
-              ["zigtsc <file.ts> -target c [output]", "Single-file C output"],
-              ["zigtsc <file.ts> -target js [output]", "JavaScript output"],
-              [
-                "zigtsc <file.ts> -target cpp [outdir]",
-                "C++ multi-file output (.h/.cpp per class)",
-              ],
-              [
-                "zigtsc init [dir]",
+                "zigtsc init <directory>",
                 "Scaffold a new project with a starter main.ts",
               ],
+              [
+                "zigtsc transpile <input.ts>",
+                "Transpile TypeScript → .h .c .cpp .js in src/zigtscout/",
+              ],
+              [
+                "zigtsc compile <zigtscout-dir>",
+                "Compile C/C++ sources → zig-out/bin + zig-out/wasm",
+              ],
+              [
+                "zigtsc run <binary-or-wasm>",
+                "Run a native binary or .wasm module (via wasmtime)",
+              ],
               ["zigtsc upgrade", "Update to the latest release"],
-              ["zigtsc help", "Print help message"],
             ].map(([cmd, desc]) => (
               <div
                 mix={css({
@@ -128,68 +128,26 @@ export function DocsPage() {
             ))}
           </Section>
 
-          <Section title="Default output (all targets)">
+          <Section title="Full pipeline">
             <P>
-              With no <Code>-target</Code> flag, zigtsc emits all four files
-              named after the input. Classes become C++ with{" "}
-              <Code>extern "C"</Code> bridge wrappers. Interfaces become C
-              structs. The C file is the entrypoint.
-            </P>
-            <CopyBlock command="zigtsc main.ts" />
-            <CodeBlock
-              lines={[
-                "main.h      unified header (#ifdef __cplusplus guards)",
-                "main.c      C entrypoint — bridge calls, interface structs, main()",
-                'main.cpp    C++ class implementations + extern "C" bridge',
-                "main.js     JavaScript output",
-              ]}
-            />
-          </Section>
-
-          <Section title="Full pipeline: TypeScript → JavaScript">
-            <P>
-              Scaffold a project, transpile to JS, and run it. The scaffold
-              includes interfaces, classes, functions, and top-level code. Types
-              are stripped; classes emit as ES6 classes.
+              Scaffold a project, transpile TypeScript to C/C++/JS, compile to
+              a native binary and Wasm module, then run both.
             </P>
             <CopyBlock
               command={
-                "zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"
+                "zigtsc init demo && zigtsc transpile demo/src/main.ts && zigtsc compile demo/src/zigtscout && zigtsc run demo/zig-out/bin/main && zigtsc run demo/zig-out/wasm/main.wasm"
               }
               display={
-                "zigtsc init myapp && \\\ncd myapp && \\\nzigtsc main.ts -target js output.js && \\\nnode output.js"
+                "zigtsc init demo && \\\nzigtsc transpile demo/src/main.ts && \\\nzigtsc compile demo/src/zigtscout && \\\nzigtsc run demo/zig-out/bin/main && zigtsc run demo/zig-out/wasm/main.wasm"
               }
             />
-          </Section>
-
-          <Section title="Full pipeline: TypeScript → native binary">
-            <P>
-              <A href="https://zigc.nathanjmorton.com">zigc</A>'s{" "}
-              <Code>--ts</Code> flag scaffolds the project with{" "}
-              <Code>src/main.ts</Code> and the build infrastructure. Running{" "}
-              <Code>zigtsc ./src/main.ts</Code> generates the C/C++ sources
-              directly into <Code>src/</Code>:
-            </P>
-            <CopyBlock
-              command={
-                "zigc init demo --ts && cd demo && zigtsc ./src/main.ts && zigc run"
-              }
-              display={
-                "zigc init demo --ts && \\\ncd demo && \\\nzigtsc ./src/main.ts && \\\nzigc run"
-              }
-            />
-            <P>Generated project after running zigtsc:</P>
+            <P>What each step produces:</P>
             <CodeBlock
               lines={[
-                "demo/",
-                "├── build.zig          ← compiles main.c + main.cpp, links libc++",
-                "├── build.zig.zon",
-                "└── src/",
-                "    ├── main.ts        ← TypeScript source",
-                "    ├── main.h         ← unified header (#ifdef __cplusplus)",
-                "    ├── main.c         ← C entrypoint: Point struct, counter_create/increment/getVal",
-                '    ├── main.cpp       ← C++ class impl + extern "C" bridge functions',
-                "    └── main.js        ← JS output (also usable with node)",
+                "zigtsc init demo        → demo/src/main.ts",
+                "zigtsc transpile        → demo/src/zigtscout/main.h .c .cpp .js",
+                "zigtsc compile          → demo/zig-out/bin/main  demo/zig-out/wasm/main.wasm",
+                "zigtsc run              → executes the binary or wasm module",
               ]}
             />
           </Section>
@@ -241,7 +199,7 @@ export function DocsPage() {
               ],
               [
                 "main.zig",
-                "CLI entry point — default all-target, or -target c|cpp|js routing",
+                "CLI entry point — init / transpile / compile / run / upgrade commands",
               ],
             ].map(([file, desc]) => (
               <div
