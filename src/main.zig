@@ -319,6 +319,20 @@ fn runCompile(io: std.Io, gpa: std.mem.Allocator, zigtscout_dir: []const u8) !vo
         if (ch.* == '-') ch.* = '_';
     }
 
+    // Resolve zigtscout_dir to an absolute path NOW, before any setCurrentDir.
+    // The generated build.zig uses .cwd_relative which is evaluated relative to
+    // whatever the process CWD is when `zig build` runs, so it must be absolute.
+    const abs_zigtscout_dir: []const u8 = blk: {
+        if (std.fs.path.isAbsolute(zigtscout_dir)) {
+            break :blk try gpa.dupe(u8, zigtscout_dir);
+        }
+        var buf: [std.fs.max_path_bytes]u8 = undefined;
+        const raw = std.c.getcwd(&buf, buf.len) orelse return error.GetCwdFailed;
+        const cwd_str = std.mem.sliceTo(raw, 0);
+        break :blk try std.fmt.allocPrint(gpa, "{s}/{s}", .{ cwd_str, zigtscout_dir });
+    };
+    defer gpa.free(abs_zigtscout_dir);
+
     // Derive the project root (2 levels up from zigtscout_dir: zigtscout -> src -> project root)
     // so build.zig and zig-out/ land in the demo project, not in the zigtsc source tree.
     var src_dir = dir.openDir(io, "..", .{}) catch {
@@ -334,7 +348,7 @@ fn runCompile(io: std.Io, gpa: std.mem.Allocator, zigtscout_dir: []const u8) !vo
 
     // Generate build.zig from template — written into the project root
     {
-        const with_dir = try zigc.replaceAll(gpa, COMPILE_BUILD_ZIG, "ZIGTSCOUT_DIR", zigtscout_dir);
+        const with_dir = try zigc.replaceAll(gpa, COMPILE_BUILD_ZIG, "ZIGTSCOUT_DIR", abs_zigtscout_dir);
         defer gpa.free(with_dir);
 
         const build_zig = try zigc.replaceAll(gpa, with_dir, "PROJ_NAME", name);
