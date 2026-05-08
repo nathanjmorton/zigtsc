@@ -1,9 +1,9 @@
-import { css } from 'remix/ui'
+import { css } from "remix/ui";
 
-import { routes } from '../routes.ts'
+import { routes } from "../routes.ts";
 
 const FONT_STACK =
-  "'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
+  "'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace";
 
 export function DocsPage() {
   return () => (
@@ -14,323 +14,581 @@ export function DocsPage() {
         <meta name="color-scheme" content="light dark" />
         <title>zigtsc docs</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
         />
-        <script type="module" src={routes.assets.href({ path: 'app/assets/entry.ts' })}></script>
+        <script
+          type="module"
+          src={routes.assets.href({ path: "app/assets/entry.ts" })}
+        ></script>
         <script>{COPY_SCRIPT}</script>
       </head>
       <body mix={css(bodyStyles)}>
         <nav mix={css(navStyles)}>
-          <a href={routes.home.href()} mix={css(navLinkStyles)}>← zigtsc</a>
-          <a href="https://github.com/nathanjmorton/zigtsc" mix={css(navLinkStyles)}>GitHub</a>
+          <a href={routes.home.href()} mix={css(navLinkStyles)}>
+            ← zigtsc
+          </a>
+          <a
+            href="https://github.com/nathanjmorton/zigtsc"
+            mix={css(navLinkStyles)}
+          >
+            GitHub
+          </a>
         </nav>
         <main mix={css(mainStyles)}>
-          <h1 mix={css({ margin: 0, fontSize: '32px', fontWeight: 700 })}>Documentation</h1>
+          <h1 mix={css({ margin: 0, fontSize: "32px", fontWeight: 700 })}>
+            Documentation
+          </h1>
 
           <Section title="Install">
             <H3>Homebrew (recommended)</H3>
             <CopyBlock command="brew install nathanjmorton/zigtsc/zigtsc" />
             <P>
-              Upgrade: <Code>brew upgrade zigtsc</Code> or <Code>zigtsc upgrade</Code>.
+              Upgrade:{" "}
+              <CopyBlock command="brew update && brew upgrade zigtsc" /> or{" "}
+              <CopyBlock command="zigtsc upgrade" />
             </P>
 
             <H3>Shell script</H3>
             <CopyBlock command="curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash" />
             <P>
-              Detects your platform (macOS/Linux, arm64/x86_64), downloads the binary to <Code>~/.zigtsc/bin/zigtsc</Code>,
-              and updates your <Code>PATH</Code>. Upgrade with <Code>zigtsc upgrade</Code> or re-run the install script.
+              Detects your platform (macOS/Linux, arm64/x86_64), downloads the
+              binary to <Code>~/.zigtsc/bin/zigtsc</Code>, and updates your{" "}
+              <Code>PATH</Code>. Upgrade with <Code>zigtsc upgrade</Code> or
+              re-run the install script.
             </P>
 
             <H3>Build from source</H3>
-            <CopyBlock command={"git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast"} display={"git clone https://github.com/nathanjmorton/zigtsc && \\\ncd zigtsc && \\\nzig build -Doptimize=ReleaseFast"} />
-            <P>Requires <A href="https://ziglang.org/download/">Zig 0.16.0</A>.</P>
+            <CopyBlock
+              command={
+                "git clone https://github.com/nathanjmorton/zigtsc && cd zigtsc && zig build -Doptimize=ReleaseFast"
+              }
+              display={
+                "git clone https://github.com/nathanjmorton/zigtsc && \\\ncd zigtsc && \\\nzig build -Doptimize=ReleaseFast"
+              }
+            />
+            <P>
+              Requires <A href="https://ziglang.org/download/">Zig 0.16.0</A>.
+            </P>
           </Section>
 
           <Section title="Command reference">
             {[
-              ['zigtsc', 'Transpile main.ts in cwd → .h .c .cpp .js'],
-              ['zigtsc <file.ts>', 'Transpile to all targets (4 files named after input)'],
-              ['zigtsc <file.ts> -target c [output]', 'Single-file C output'],
-              ['zigtsc <file.ts> -target js [output]', 'JavaScript output'],
-              ['zigtsc <file.ts> -target cpp [outdir]', 'C++ multi-file output (.h/.cpp per class)'],
-              ['zigtsc init [dir]', 'Scaffold a new project with a starter main.ts'],
-              ['zigtsc upgrade', 'Update to the latest release'],
-              ['zigtsc help', 'Print help message'],
+              ["zigtsc", "Transpile main.ts in cwd → .h .c .cpp .js"],
+              [
+                "zigtsc <file.ts>",
+                "Transpile to all targets (4 files named after input)",
+              ],
+              ["zigtsc <file.ts> -target c [output]", "Single-file C output"],
+              ["zigtsc <file.ts> -target js [output]", "JavaScript output"],
+              [
+                "zigtsc <file.ts> -target cpp [outdir]",
+                "C++ multi-file output (.h/.cpp per class)",
+              ],
+              [
+                "zigtsc init [dir]",
+                "Scaffold a new project with a starter main.ts",
+              ],
+              ["zigtsc upgrade", "Update to the latest release"],
+              ["zigtsc help", "Print help message"],
             ].map(([cmd, desc]) => (
-              <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
-                <code mix={css({ fontSize: '13px', color: 'var(--text-primary)', minWidth: '280px', whiteSpace: 'nowrap' })}>{cmd}</code>
-                <span mix={css({ fontSize: '13px', color: 'var(--text-secondary)' })}>{desc}</span>
+              <div
+                mix={css({
+                  display: "flex",
+                  gap: "16px",
+                  padding: "4px 0",
+                  flexWrap: "wrap",
+                })}
+              >
+                <code
+                  mix={css({
+                    fontSize: "13px",
+                    color: "var(--text-primary)",
+                    minWidth: "280px",
+                    whiteSpace: "nowrap",
+                  })}
+                >
+                  {cmd}
+                </code>
+                <span
+                  mix={css({
+                    fontSize: "13px",
+                    color: "var(--text-secondary)",
+                  })}
+                >
+                  {desc}
+                </span>
               </div>
             ))}
           </Section>
 
           <Section title="Default output (all targets)">
             <P>
-              With no <Code>-target</Code> flag, zigtsc emits all four files named after the input.
-              Classes become C++ with <Code>extern "C"</Code> bridge wrappers. Interfaces become C structs.
-              The C file is the entrypoint.
+              With no <Code>-target</Code> flag, zigtsc emits all four files
+              named after the input. Classes become C++ with{" "}
+              <Code>extern "C"</Code> bridge wrappers. Interfaces become C
+              structs. The C file is the entrypoint.
             </P>
             <CopyBlock command="zigtsc main.ts" />
-            <CodeBlock lines={[
-              'main.h      unified header (#ifdef __cplusplus guards)',
-              'main.c      C entrypoint — bridge calls, interface structs, main()',
-              'main.cpp    C++ class implementations + extern "C" bridge',
-              'main.js     JavaScript output',
-            ]} />
+            <CodeBlock
+              lines={[
+                "main.h      unified header (#ifdef __cplusplus guards)",
+                "main.c      C entrypoint — bridge calls, interface structs, main()",
+                'main.cpp    C++ class implementations + extern "C" bridge',
+                "main.js     JavaScript output",
+              ]}
+            />
           </Section>
 
           <Section title="Full pipeline: TypeScript → JavaScript">
             <P>
-              Scaffold a project, transpile to JS, and run it. The scaffold includes interfaces, classes,
-              functions, and top-level code. Types are stripped; classes emit as ES6 classes.
+              Scaffold a project, transpile to JS, and run it. The scaffold
+              includes interfaces, classes, functions, and top-level code. Types
+              are stripped; classes emit as ES6 classes.
             </P>
-            <CopyBlock command={"zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"} display={"zigtsc init myapp && \\\ncd myapp && \\\nzigtsc main.ts -target js output.js && \\\nnode output.js"} />
+            <CopyBlock
+              command={
+                "zigtsc init myapp && cd myapp && zigtsc main.ts -target js output.js && node output.js"
+              }
+              display={
+                "zigtsc init myapp && \\\ncd myapp && \\\nzigtsc main.ts -target js output.js && \\\nnode output.js"
+              }
+            />
           </Section>
 
           <Section title="Full pipeline: TypeScript → native binary">
             <P>
-              <A href="https://zigc.nathanjmorton.com">zigc</A>'s <Code>--ts</Code> flag scaffolds the
-              project with <Code>src/main.ts</Code> and the build infrastructure. Running{' '}
-              <Code>zigtsc ./src/main.ts</Code> generates the C/C++ sources directly into <Code>src/</Code>:
+              <A href="https://zigc.nathanjmorton.com">zigc</A>'s{" "}
+              <Code>--ts</Code> flag scaffolds the project with{" "}
+              <Code>src/main.ts</Code> and the build infrastructure. Running{" "}
+              <Code>zigtsc ./src/main.ts</Code> generates the C/C++ sources
+              directly into <Code>src/</Code>:
             </P>
-            <CopyBlock command={"zigc init demo --ts && cd demo && zigtsc ./src/main.ts && zigc run"} display={"zigc init demo --ts && \\\ncd demo && \\\nzigtsc ./src/main.ts && \\\nzigc run"} />
+            <CopyBlock
+              command={
+                "zigc init demo --ts && cd demo && zigtsc ./src/main.ts && zigc run"
+              }
+              display={
+                "zigc init demo --ts && \\\ncd demo && \\\nzigtsc ./src/main.ts && \\\nzigc run"
+              }
+            />
             <P>Generated project after running zigtsc:</P>
-            <CodeBlock lines={[
-              'demo/',
-              '├── build.zig          ← compiles main.c + main.cpp, links libc++',
-              '├── build.zig.zon',
-              '└── src/',
-              '    ├── main.ts        ← TypeScript source',
-              '    ├── main.h         ← unified header (#ifdef __cplusplus)',
-              '    ├── main.c         ← C entrypoint: Point struct, counter_create/increment/getVal',
-              '    ├── main.cpp       ← C++ class impl + extern "C" bridge functions',
-              '    └── main.js        ← JS output (also usable with node)',
-            ]} />
+            <CodeBlock
+              lines={[
+                "demo/",
+                "├── build.zig          ← compiles main.c + main.cpp, links libc++",
+                "├── build.zig.zon",
+                "└── src/",
+                "    ├── main.ts        ← TypeScript source",
+                "    ├── main.h         ← unified header (#ifdef __cplusplus)",
+                "    ├── main.c         ← C entrypoint: Point struct, counter_create/increment/getVal",
+                '    ├── main.cpp       ← C++ class impl + extern "C" bridge functions',
+                "    └── main.js        ← JS output (also usable with node)",
+              ]}
+            />
           </Section>
 
           <Section title="Compiler pipeline">
-            <CodeBlock lines={[
-              'source.ts → Lexer → Tokens → Parser → AST → Checker →┬→ CodeGen    → output.c  (single-target)',
-              '                                                      ├→ CodeGenJS  → output.js (single-target)',
-              '                                                      └→ CodeGenCpp → .h + .c + .cpp + .js (unified)',
-            ]} />
-            <P>Each stage is a separate Zig source file. Parser and checker are shared across all targets.</P>
+            <CodeBlock
+              lines={[
+                "source.ts → Lexer → Tokens → Parser → AST → Checker →┬→ CodeGen    → output.c  (single-target)",
+                "                                                      ├→ CodeGenJS  → output.js (single-target)",
+                "                                                      └→ CodeGenCpp → .h + .c + .cpp + .js (unified)",
+              ]}
+            />
+            <P>
+              Each stage is a separate Zig source file. Parser and checker are
+              shared across all targets.
+            </P>
             {[
-              ['token.zig', 'Token definitions — keywords (including class/new/this), operators, literals'],
-              ['lexer.zig', 'Tokenizer with comment skipping, string/number/identifier support'],
-              ['ast.zig', 'AST node definitions — class_decl, method_decl, constructor_decl, new_expr, this_expr'],
-              ['parser.zig', 'Recursive descent parser with class/method/constructor/new/this support'],
-              ['checker.zig', 'Type checker — scoped symbols, ClassDef, class_t type, this binding'],
-              ['codegen.zig', 'C emitter — interface→struct, console.log→printf (single-target -target c)'],
-              ['codegen_js.zig', 'JS emitter — strips types, classes→ES6 classes, interfaces omitted'],
-              ['codegen_cpp.zig', 'C++ emitter — unified .h/.c/.cpp with bridge-mode, also per-class -target cpp'],
-              ['main.zig', 'CLI entry point — default all-target, or -target c|cpp|js routing'],
+              [
+                "token.zig",
+                "Token definitions — keywords (including class/new/this), operators, literals",
+              ],
+              [
+                "lexer.zig",
+                "Tokenizer with comment skipping, string/number/identifier support",
+              ],
+              [
+                "ast.zig",
+                "AST node definitions — class_decl, method_decl, constructor_decl, new_expr, this_expr",
+              ],
+              [
+                "parser.zig",
+                "Recursive descent parser with class/method/constructor/new/this support",
+              ],
+              [
+                "checker.zig",
+                "Type checker — scoped symbols, ClassDef, class_t type, this binding",
+              ],
+              [
+                "codegen.zig",
+                "C emitter — interface→struct, console.log→printf (single-target -target c)",
+              ],
+              [
+                "codegen_js.zig",
+                "JS emitter — strips types, classes→ES6 classes, interfaces omitted",
+              ],
+              [
+                "codegen_cpp.zig",
+                "C++ emitter — unified .h/.c/.cpp with bridge-mode, also per-class -target cpp",
+              ],
+              [
+                "main.zig",
+                "CLI entry point — default all-target, or -target c|cpp|js routing",
+              ],
             ].map(([file, desc]) => (
-              <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
-                <code mix={css({ fontSize: '13px', color: 'var(--accent)', whiteSpace: 'nowrap', minWidth: '140px' })}>{file}</code>
-                <span mix={css({ fontSize: '13px', color: 'var(--text-secondary)' })}>{desc}</span>
+              <div
+                mix={css({
+                  display: "flex",
+                  gap: "16px",
+                  padding: "4px 0",
+                  flexWrap: "wrap",
+                })}
+              >
+                <code
+                  mix={css({
+                    fontSize: "13px",
+                    color: "var(--accent)",
+                    whiteSpace: "nowrap",
+                    minWidth: "140px",
+                  })}
+                >
+                  {file}
+                </code>
+                <span
+                  mix={css({
+                    fontSize: "13px",
+                    color: "var(--text-secondary)",
+                  })}
+                >
+                  {desc}
+                </span>
               </div>
             ))}
           </Section>
 
           <Section title="Supported types">
             {[
-              ['number', 'double'],
-              ['boolean', 'bool'],
-              ['string', 'const char*'],
-              ['void', 'void'],
-              ['i32', 'int32_t'],
-              ['i64', 'int64_t'],
-              ['f32', 'float'],
-              ['f64', 'double'],
-              ['T[]', 'double* (simplified)'],
-              ['interface Foo { ... }', 'typedef struct / C++ struct'],
-              ['class Foo { ... }', 'C++ class with .h/.cpp pair'],
+              ["number", "double"],
+              ["boolean", "bool"],
+              ["string", "const char*"],
+              ["void", "void"],
+              ["i32", "int32_t"],
+              ["i64", "int64_t"],
+              ["f32", "float"],
+              ["f64", "double"],
+              ["T[]", "double* (simplified)"],
+              ["interface Foo { ... }", "typedef struct / C++ struct"],
+              ["class Foo { ... }", "C++ class with .h/.cpp pair"],
             ].map(([ts, c]) => (
-              <div mix={css({ display: 'flex', gap: '16px', padding: '4px 0', flexWrap: 'wrap' })}>
-                <code mix={css({ fontSize: '13px', color: 'var(--text-primary)', minWidth: '220px' })}>{ts}</code>
-                <span mix={css({ fontSize: '13px', color: 'var(--text-tertiary)' })}>→ {c}</span>
+              <div
+                mix={css({
+                  display: "flex",
+                  gap: "16px",
+                  padding: "4px 0",
+                  flexWrap: "wrap",
+                })}
+              >
+                <code
+                  mix={css({
+                    fontSize: "13px",
+                    color: "var(--text-primary)",
+                    minWidth: "220px",
+                  })}
+                >
+                  {ts}
+                </code>
+                <span
+                  mix={css({ fontSize: "13px", color: "var(--text-tertiary)" })}
+                >
+                  → {c}
+                </span>
               </div>
             ))}
           </Section>
 
           <Section title="Supported syntax">
             <H3>Variables</H3>
-            <CodeBlock lines={[
-              'let x: number = 42;          → double x = 42;       (C)',
-              'const msg: string = "hi";    → const msg = "hi";    (JS)',
-            ]} />
+            <CodeBlock
+              lines={[
+                "let x: number = 42;          → double x = 42;       (C)",
+                'const msg: string = "hi";    → const msg = "hi";    (JS)',
+              ]}
+            />
 
             <H3>Functions</H3>
-            <CodeBlock lines={[
-              'function add(a: number, b: number): number {',
-              '    return a + b;',
-              '}',
-              '',
-              '→ C:   double add(double a, double b) { return (a + b); }',
-              '→ JS:  function add(a, b) { return (a + b); }',
-              '→ C++: double add(double a, double b) { return (a + b); }  (in main.cpp)',
-            ]} />
+            <CodeBlock
+              lines={[
+                "function add(a: number, b: number): number {",
+                "    return a + b;",
+                "}",
+                "",
+                "→ C:   double add(double a, double b) { return (a + b); }",
+                "→ JS:  function add(a, b) { return (a + b); }",
+                "→ C++: double add(double a, double b) { return (a + b); }  (in main.cpp)",
+              ]}
+            />
 
             <H3>Interfaces</H3>
-            <CodeBlock lines={[
-              'interface Point { x: number; y: number; }',
-              '',
-              '→ C:   typedef struct { double x; double y; } Point;',
-              '→ JS:  (omitted — compile-time only)',
-              '→ C++: struct Point { double x; double y; };',
-            ]} />
+            <CodeBlock
+              lines={[
+                "interface Point { x: number; y: number; }",
+                "",
+                "→ C:   typedef struct { double x; double y; } Point;",
+                "→ JS:  (omitted — compile-time only)",
+                "→ C++: struct Point { double x; double y; };",
+              ]}
+            />
 
             <H3>Classes (Go-style, no inheritance)</H3>
-            <CodeBlock lines={[
-              'class Counter {',
-              '    value: i32;',
-              '    constructor(init: i32) { this.value = init; }',
-              '    increment(): void { this.value = this.value + 1; }',
-              '    getVal(): i32 { return this.value; }',
-              '}',
-              'const c = new Counter(10);',
-              '',
-              '→ JS:  class Counter { constructor(init) { ... } ... }',
-              '→ C++: Counter.h + Counter.cpp (separate files)',
-              '        Counter::Counter(int32_t init) { this->value = init; }',
-            ]} />
+            <CodeBlock
+              lines={[
+                "class Counter {",
+                "    value: i32;",
+                "    constructor(init: i32) { this.value = init; }",
+                "    increment(): void { this.value = this.value + 1; }",
+                "    getVal(): i32 { return this.value; }",
+                "}",
+                "const c = new Counter(10);",
+                "",
+                "→ JS:  class Counter { constructor(init) { ... } ... }",
+                "→ C++: Counter.h + Counter.cpp (separate files)",
+                "        Counter::Counter(int32_t init) { this->value = init; }",
+              ]}
+            />
 
             <H3>Control flow</H3>
             <P>
-              <Code>if</Code> / <Code>else if</Code> / <Code>else</Code>, <Code>while</Code>,{' '}
-              <Code>for</Code> (C-style 3-part), <Code>return</Code> — all map directly to their target equivalents.
+              <Code>if</Code> / <Code>else if</Code> / <Code>else</Code>,{" "}
+              <Code>while</Code>, <Code>for</Code> (C-style 3-part),{" "}
+              <Code>return</Code> — all map directly to their target
+              equivalents.
             </P>
 
             <H3>Expressions</H3>
             <P>
-              Arithmetic (<Code>+ - * / %</Code>), comparison (<Code>{'< > <= >= == != === !=='}</Code>),
-              logical (<Code>{'&& || !'}</Code>), assignment (<Code>= += -= *= /=</Code>),
-              function calls, member access (<Code>a.b</Code> / <Code>this.x</Code>),
-              index access (<Code>a[i]</Code>), <Code>new ClassName(args)</Code>.
+              Arithmetic (<Code>+ - * / %</Code>), comparison (
+              <Code>{"< > <= >= == != === !=="}</Code>), logical (
+              <Code>{"&& || !"}</Code>), assignment (<Code>= += -= *= /=</Code>
+              ), function calls, member access (<Code>a.b</Code> /{" "}
+              <Code>this.x</Code>), index access (<Code>a[i]</Code>),{" "}
+              <Code>new ClassName(args)</Code>.
             </P>
 
             <H3>console.log</H3>
             <P>
-              In C/C++ targets: transpiled to <Code>printf()</Code> with format strings inferred from types.
-              In JS target: stays as <Code>console.log()</Code>.
+              In C/C++ targets: transpiled to <Code>printf()</Code> with format
+              strings inferred from types. In JS target: stays as{" "}
+              <Code>console.log()</Code>.
             </P>
           </Section>
 
           <Section title="Explicitly excluded">
             <P>These TypeScript features are intentionally unsupported:</P>
-            <ul mix={css({ margin: 0, paddingLeft: '20px', fontSize: '14px', lineHeight: 1.8, color: 'var(--text-secondary)' })}>
-              <li>Inheritance / <Code>extends</Code></li>
+            <ul
+              mix={css({
+                margin: 0,
+                paddingLeft: "20px",
+                fontSize: "14px",
+                lineHeight: 1.8,
+                color: "var(--text-secondary)",
+              })}
+            >
+              <li>
+                Inheritance / <Code>extends</Code>
+              </li>
               <li>Static fields/methods</li>
               <li>Closures / capturing nested functions</li>
-              <li><Code>async</Code> / <Code>await</Code>, Promises</li>
-              <li>Generics, union types, <Code>any</Code>, <Code>unknown</Code></li>
+              <li>
+                <Code>async</Code> / <Code>await</Code>, Promises
+              </li>
+              <li>
+                Generics, union types, <Code>any</Code>, <Code>unknown</Code>
+              </li>
               <li>Decorators, destructuring, spread, optional chaining</li>
               <li>Getters/setters, access modifiers</li>
-              <li><Code>eval</Code>, <Code>new Function()</Code></li>
+              <li>
+                <Code>eval</Code>, <Code>new Function()</Code>
+              </li>
             </ul>
           </Section>
 
           <Section title="Memory model">
             <P>
-              Stack allocation by default for scalars and small structs. Arrays are heap-allocated
-              with <Code>malloc</Code> — the caller is responsible for <Code>free</Code>. There is no
-              garbage collector. The C/C++ targets are explicitly manual-memory.
-              The JS target inherits the JS runtime's GC.
+              Stack allocation by default for scalars and small structs. Arrays
+              are heap-allocated with <Code>malloc</Code> — the caller is
+              responsible for <Code>free</Code>. There is no garbage collector.
+              The C/C++ targets are explicitly manual-memory. The JS target
+              inherits the JS runtime's GC.
             </P>
           </Section>
 
           <Section title="What zigtsc init generates">
             <P>
-              <Code>zigtsc init</Code> creates a <Code>main.ts</Code> that exercises every language feature.
-              The scaffold includes an interface (<Code>Point</Code>), a class (<Code>Counter</Code>) with
-              constructor and methods, a free function (<Code>distance</Code>), and top-level code that
-              instantiates the class with <Code>new</Code>.
+              <Code>zigtsc init</Code> creates a <Code>main.ts</Code> that
+              exercises every language feature. The scaffold includes an
+              interface (<Code>Point</Code>), a class (<Code>Counter</Code>)
+              with constructor and methods, a free function (
+              <Code>distance</Code>), and top-level code that instantiates the
+              class with <Code>new</Code>.
             </P>
-            <CodeBlock lines={[
-              'interface Point { x: number; y: number; }',
-              '',
-              'function distance(a: Point, b: Point): number {',
-              '    let dx: number = b.x - a.x;',
-              '    let dy: number = b.y - a.y;',
-              '    return dx * dx + dy * dy;',
-              '}',
-              '',
-              'class Counter {',
-              '    value: i32;',
-              '    constructor(init: i32) { this.value = init; }',
-              '    increment(): void { this.value = this.value + 1; }',
-              '    decrement(): void { this.value = this.value - 1; }',
-              '    getVal(): i32 { return this.value; }',
-              '}',
-              '',
-              'const p1: Point = { x: 0, y: 0 };',
-              'const p2: Point = { x: 3, y: 4 };',
-              'console.log(distance(p1, p2));',
-              '',
-              'const c = new Counter(10);',
-              'c.increment();',
-              'c.increment();',
-              'c.decrement();',
-              'console.log(c.getVal());',
-            ]} />
+            <CodeBlock
+              lines={[
+                "interface Point { x: number; y: number; }",
+                "",
+                "function distance(a: Point, b: Point): number {",
+                "    let dx: number = b.x - a.x;",
+                "    let dy: number = b.y - a.y;",
+                "    return dx * dx + dy * dy;",
+                "}",
+                "",
+                "class Counter {",
+                "    value: i32;",
+                "    constructor(init: i32) { this.value = init; }",
+                "    increment(): void { this.value = this.value + 1; }",
+                "    decrement(): void { this.value = this.value - 1; }",
+                "    getVal(): i32 { return this.value; }",
+                "}",
+                "",
+                "const p1: Point = { x: 0, y: 0 };",
+                "const p2: Point = { x: 3, y: 4 };",
+                "console.log(distance(p1, p2));",
+                "",
+                "const c = new Counter(10);",
+                "c.increment();",
+                "c.increment();",
+                "c.decrement();",
+                "console.log(c.getVal());",
+              ]}
+            />
           </Section>
 
           <Section title="Running tests">
             <CopyBlock command="zig build test --summary all" />
             <P>
-              22 tests covering the lexer, parser, checker, C codegen,
-              JS codegen, and C++ codegen. Zero memory leaks.
+              22 tests covering the lexer, parser, checker, C codegen, JS
+              codegen, and C++ codegen. Zero memory leaks.
             </P>
           </Section>
 
-          <footer mix={css({ paddingTop: '24px', fontSize: '12px', color: 'var(--text-tertiary)', textAlign: 'center' })}>
-            <a href={routes.home.href()} mix={css({ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: '2px' })}>
+          <footer
+            mix={css({
+              paddingTop: "24px",
+              fontSize: "12px",
+              color: "var(--text-tertiary)",
+              textAlign: "center",
+            })}
+          >
+            <a
+              href={routes.home.href()}
+              mix={css({
+                color: "var(--accent)",
+                textDecoration: "underline",
+                textUnderlineOffset: "2px",
+              })}
+            >
               ← Back to zigtsc
             </a>
           </footer>
         </main>
       </body>
     </html>
-  )
+  );
 }
 
 // ── Reusable components ──────────────────────────────────────────────────────
 
 function Section() {
   return ({ title, children }: { title: string; children?: any }) => (
-    <section mix={css({ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' })}>
-      <h2 mix={css({ margin: 0, fontSize: '18px', fontWeight: 700, paddingBottom: '4px', borderBottom: '1px solid var(--border)' })}>{title}</h2>
+    <section
+      mix={css({
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+      })}
+    >
+      <h2
+        mix={css({
+          margin: 0,
+          fontSize: "18px",
+          fontWeight: 700,
+          paddingBottom: "4px",
+          borderBottom: "1px solid var(--border)",
+        })}
+      >
+        {title}
+      </h2>
       {children}
     </section>
-  )
+  );
 }
 
 function H3() {
   return ({ children }: { children?: any }) => (
-    <h3 mix={css({ margin: '8px 0 0', fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)' })}>{children}</h3>
-  )
+    <h3
+      mix={css({
+        margin: "8px 0 0",
+        fontSize: "14px",
+        fontWeight: 700,
+        color: "var(--text-primary)",
+      })}
+    >
+      {children}
+    </h3>
+  );
 }
 
 function P() {
   return ({ children }: { children?: any }) => (
-    <p mix={css({ margin: 0, fontSize: '14px', lineHeight: 1.7, color: 'var(--text-secondary)' })}>{children}</p>
-  )
+    <p
+      mix={css({
+        margin: 0,
+        fontSize: "14px",
+        lineHeight: 1.7,
+        color: "var(--text-secondary)",
+      })}
+    >
+      {children}
+    </p>
+  );
 }
 
 function A() {
   return ({ href, children }: { href: string; children?: any }) => (
-    <a href={href} mix={css({ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: '2px' })}>{children}</a>
-  )
+    <a
+      href={href}
+      mix={css({
+        color: "var(--accent)",
+        textDecoration: "underline",
+        textUnderlineOffset: "2px",
+      })}
+    >
+      {children}
+    </a>
+  );
 }
 
 function Code() {
   return ({ children }: { children?: any }) => (
-    <code mix={css({ fontSize: '13px', background: 'var(--surface-3)', padding: '1px 5px', borderRadius: '4px' })}>{children}</code>
-  )
+    <code
+      mix={css({
+        fontSize: "13px",
+        background: "var(--surface-3)",
+        padding: "1px 5px",
+        borderRadius: "4px",
+      })}
+    >
+      {children}
+    </code>
+  );
 }
 
 function CodeBlock() {
@@ -338,20 +596,20 @@ function CodeBlock() {
     <pre
       mix={css({
         margin: 0,
-        background: 'var(--surface-3)',
-        borderRadius: '12px',
-        padding: '16px 20px',
-        fontSize: '13px',
+        background: "var(--surface-3)",
+        borderRadius: "12px",
+        padding: "16px 20px",
+        fontSize: "13px",
         lineHeight: 1.7,
-        overflowX: 'auto',
-        color: 'var(--text-primary)',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-all',
+        overflowX: "auto",
+        color: "var(--text-primary)",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-all",
       })}
     >
-      {lines.join('\n')}
+      {lines.join("\n")}
     </pre>
-  )
+  );
 }
 
 function CopyBlock() {
@@ -359,28 +617,28 @@ function CopyBlock() {
     <div
       data-copy={command}
       mix={css({
-        width: '100%',
+        width: "100%",
         margin: 0,
-        background: 'var(--surface-3)',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '12px 16px',
-        cursor: 'pointer',
-        position: 'relative',
-        transition: 'border-color 150ms ease',
-        '&:hover': { borderColor: 'var(--accent)' },
+        background: "var(--surface-3)",
+        border: "1px solid var(--border)",
+        borderRadius: "12px",
+        padding: "12px 16px",
+        cursor: "pointer",
+        position: "relative",
+        transition: "border-color 150ms ease",
+        "&:hover": { borderColor: "var(--accent)" },
       })}
     >
       <pre
         mix={css({
           margin: 0,
-          fontSize: '13px',
+          fontSize: "13px",
           lineHeight: 1.6,
-          color: 'var(--text-primary)',
-          overflowX: 'auto',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-          '&::before': { content: '"$ "', color: 'var(--text-tertiary)' },
+          color: "var(--text-primary)",
+          overflowX: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-all",
+          "&::before": { content: '"$ "', color: "var(--text-tertiary)" },
         })}
       >
         {display ?? command}
@@ -388,18 +646,18 @@ function CopyBlock() {
       <span
         className="copy-hint"
         mix={css({
-          position: 'absolute',
-          top: '8px',
-          right: '12px',
-          fontSize: '11px',
-          color: 'var(--text-tertiary)',
-          transition: 'opacity 150ms ease',
+          position: "absolute",
+          top: "8px",
+          right: "12px",
+          fontSize: "11px",
+          color: "var(--text-tertiary)",
+          transition: "opacity 150ms ease",
         })}
       >
         click to copy
       </span>
     </div>
-  )
+  );
 }
 
 const COPY_SCRIPT = `
@@ -440,65 +698,65 @@ document.addEventListener('click', function(e) {
     }
   });
 });
-`
+`;
 
 // ── Styles
 
 const bodyStyles = {
-  '--surface-0': '#0c0d10',
-  '--surface-3': '#1a1b1f',
-  '--border': '#2a2b30',
-  '--text-primary': '#e8e8ec',
-  '--text-secondary': '#a0a0a8',
-  '--text-tertiary': '#6b6b74',
-  '--accent': '#60a0f0',
-  '@media (prefers-color-scheme: light)': {
-    '--surface-0': '#f5f5f7',
-    '--surface-3': '#e8e8ec',
-    '--border': '#d0d0d6',
-    '--text-primary': '#1a1b1f',
-    '--text-secondary': '#52525a',
-    '--text-tertiary': '#8b8b94',
-    '--accent': '#2563eb',
+  "--surface-0": "#0c0d10",
+  "--surface-3": "#1a1b1f",
+  "--border": "#2a2b30",
+  "--text-primary": "#e8e8ec",
+  "--text-secondary": "#a0a0a8",
+  "--text-tertiary": "#6b6b74",
+  "--accent": "#60a0f0",
+  "@media (prefers-color-scheme: light)": {
+    "--surface-0": "#f5f5f7",
+    "--surface-3": "#e8e8ec",
+    "--border": "#d0d0d6",
+    "--text-primary": "#1a1b1f",
+    "--text-secondary": "#52525a",
+    "--text-tertiary": "#8b8b94",
+    "--accent": "#2563eb",
   },
-  '& *, & *::before, & *::after': { boxSizing: 'border-box' },
+  "& *, & *::before, & *::after": { boxSizing: "border-box" },
   margin: 0,
-  padding: '48px 24px',
-  minHeight: '100vh',
-  background: 'var(--surface-0)',
-  color: 'var(--text-primary)',
+  padding: "48px 24px",
+  minHeight: "100vh",
+  background: "var(--surface-0)",
+  color: "var(--text-primary)",
   fontFamily: FONT_STACK,
-  fontSize: '14px',
+  fontSize: "14px",
   lineHeight: 1.5,
-  WebkitFontSmoothing: 'antialiased',
-  MozOsxFontSmoothing: 'grayscale',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-} as const
+  WebkitFontSmoothing: "antialiased",
+  MozOsxFontSmoothing: "grayscale",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+} as const;
 
 const mainStyles = {
-  width: '100%',
-  maxWidth: '760px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '40px',
-  paddingTop: '24px',
-} as const
+  width: "100%",
+  maxWidth: "760px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "40px",
+  paddingTop: "24px",
+} as const;
 
 const navStyles = {
-  width: '100%',
-  maxWidth: '760px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  paddingBottom: '16px',
-  borderBottom: '1px solid var(--border)',
-} as const
+  width: "100%",
+  maxWidth: "760px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingBottom: "16px",
+  borderBottom: "1px solid var(--border)",
+} as const;
 
 const navLinkStyles = {
-  fontSize: '13px',
-  color: 'var(--text-tertiary)',
-  textDecoration: 'none',
-  '&:hover': { color: 'var(--text-primary)' },
-} as const
+  fontSize: "13px",
+  color: "var(--text-tertiary)",
+  textDecoration: "none",
+  "&:hover": { color: "var(--text-primary)" },
+} as const;

@@ -73,6 +73,9 @@ test-all: all demo-released
 website:
 	npm --prefix www run dev
 
+upgrade:
+	brew update && brew upgrade zigtsc	
+
 .PHONY: all build clean release demo demo-init demo-transpile demo-compile demo-run \
         demo-released demo-released-check demo-released-init demo-released-transpile \
         demo-released-compile demo-released-run test-all website

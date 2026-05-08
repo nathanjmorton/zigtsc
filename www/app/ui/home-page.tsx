@@ -1,9 +1,9 @@
-import { css } from 'remix/ui'
+import { css } from "remix/ui";
 
-import { routes } from '../routes.ts'
+import { routes } from "../routes.ts";
 
 const FONT_STACK =
-  "'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
+  "'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace";
 
 export function HomePage() {
   return () => (
@@ -18,12 +18,19 @@ export function HomePage() {
           content="A compiler written in Zig that transpiles a strict subset of TypeScript to C, C++, and JavaScript. No Wasm intermediate, no runtime."
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
         />
-        <script type="module" src={routes.assets.href({ path: 'app/assets/entry.ts' })}></script>
+        <script
+          type="module"
+          src={routes.assets.href({ path: "app/assets/entry.ts" })}
+        ></script>
         <script>{COPY_SCRIPT}</script>
       </head>
       <body mix={css(bodyStyles)}>
@@ -36,7 +43,7 @@ export function HomePage() {
         </main>
       </body>
     </html>
-  )
+  );
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
@@ -46,21 +53,21 @@ function Hero() {
     <section
       aria-label="Introduction"
       mix={css({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '24px',
-        textAlign: 'center',
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "24px",
+        textAlign: "center",
       })}
     >
       <h1
         mix={css({
           margin: 0,
-          fontSize: '48px',
+          fontSize: "48px",
           fontWeight: 700,
-          letterSpacing: '-0.02em',
+          letterSpacing: "-0.02em",
           lineHeight: 1.1,
-          '@media (max-width: 600px)': { fontSize: '32px' },
+          "@media (max-width: 600px)": { fontSize: "32px" },
         })}
       >
         zigtsc
@@ -68,17 +75,25 @@ function Hero() {
       <p
         mix={css({
           margin: 0,
-          fontSize: '18px',
+          fontSize: "18px",
           lineHeight: 1.6,
-          color: 'var(--text-secondary)',
-          maxWidth: '560px',
-          '@media (max-width: 600px)': { fontSize: '15px' },
+          color: "var(--text-secondary)",
+          maxWidth: "560px",
+          "@media (max-width: 600px)": { fontSize: "15px" },
         })}
       >
-        A compiler written in Zig that transpiles a strict subset of TypeScript to C, C++, and
-        JavaScript. Classes, interfaces, type-checked. Three targets from one source.
+        A compiler written in Zig that transpiles a strict subset of TypeScript
+        to C, C++, and JavaScript. Classes, interfaces, type-checked. Three
+        targets from one source.
       </p>
-      <div mix={css({ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' })}>
+      <div
+        mix={css({
+          display: "flex",
+          gap: "12px",
+          flexWrap: "wrap",
+          justifyContent: "center",
+        })}
+      >
         <Tag>TypeScript syntax</Tag>
         <Tag>→ C / C++ / JS</Tag>
         <Tag>Go-style classes</Tag>
@@ -88,62 +103,77 @@ function Hero() {
         command={"brew install nathanjmorton/zigtsc/zigtsc"}
         display={"brew install nathanjmorton/zigtsc/zigtsc"}
       />
-      <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
+      <p
+        mix={css({
+          margin: 0,
+          fontSize: "12px",
+          color: "var(--text-tertiary)",
+        })}
+      >
         or
       </p>
       <CopyBlock
-        command={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
-        display={"curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"}
+        command={
+          "curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"
+        }
+        display={
+          "curl -fsSL https://raw.githubusercontent.com/nathanjmorton/zigtsc/main/install.sh | bash"
+        }
       />
-      <p mix={css({ margin: 0, fontSize: '12px', color: 'var(--text-tertiary)' })}>
-        macOS · Linux · arm64 / x86_64{' '}
-        ·{' '}
+      <p
+        mix={css({
+          margin: 0,
+          fontSize: "12px",
+          color: "var(--text-tertiary)",
+        })}
+      >
+        macOS · Linux · arm64 / x86_64 ·{" "}
         <a href="https://github.com/nathanjmorton/zigtsc" mix={css(linkStyles)}>
           GitHub
-        </a>{' '}
-        ·{' '}
+        </a>{" "}
+        ·{" "}
         <a href={routes.docs.href()} mix={css(linkStyles)}>
           Docs
-        </a>{' '}
-        ·{' '}
+        </a>{" "}
+        ·{" "}
         <a href="https://zigc.nathanjmorton.com" mix={css(linkStyles)}>
           zigc
         </a>
       </p>
     </section>
-  )
+  );
 }
 
 function Tag() {
   return ({ children }: { children?: any }) => (
     <span
       mix={css({
-        fontSize: '12px',
+        fontSize: "12px",
         fontWeight: 700,
-        padding: '4px 12px',
-        borderRadius: '99px',
-        background: 'var(--surface-3)',
-        color: 'var(--accent)',
-        border: '1px solid var(--border)',
+        padding: "4px 12px",
+        borderRadius: "99px",
+        background: "var(--surface-3)",
+        color: "var(--accent)",
+        border: "1px solid var(--border)",
       })}
     >
       {children}
     </span>
-  )
+  );
 }
 
 // ── Side-by-side example ────────────────────────────────────────────────────
 
 function Example() {
   return () => (
-    <section aria-label="Example" mix={css({ width: '100%' })}>
+    <section aria-label="Example" mix={css({ width: "100%" })}>
       <h2 mix={css(sectionHeadingStyles)}>TypeScript in, C out</h2>
       <div
         mix={css({
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-          '@media (max-width: 700px)': { gridTemplateColumns: '1fr' },
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "12px",
+          "@media (max-width: 700px)": { gridTemplateColumns: "1fr" },
         })}
       >
         <CodePanel
@@ -183,21 +213,21 @@ int main(void) {
         />
       </div>
     </section>
-  )
+  );
 }
 
 function CodePanel() {
   return ({ label, code }: { label: string; code: string }) => (
-    <div mix={css({ display: 'flex', flexDirection: 'column', gap: '0' })}>
+    <div mix={css({ display: "flex", flexDirection: "column", gap: "0" })}>
       <div
         mix={css({
-          fontSize: '11px',
+          fontSize: "11px",
           fontWeight: 700,
-          color: 'var(--accent)',
-          padding: '8px 16px',
-          background: 'var(--surface-3)',
-          borderRadius: '12px 12px 0 0',
-          borderBottom: '1px solid var(--border)',
+          color: "var(--accent)",
+          padding: "8px 16px",
+          background: "var(--surface-3)",
+          borderRadius: "12px 12px 0 0",
+          borderBottom: "1px solid var(--border)",
         })}
       >
         {label}
@@ -205,41 +235,59 @@ function CodePanel() {
       <pre
         mix={css({
           margin: 0,
-          background: 'var(--surface-3)',
-          borderRadius: '0 0 12px 12px',
-          padding: '16px',
-          fontSize: '12px',
+          background: "var(--surface-3)",
+          borderRadius: "0 0 12px 12px",
+          padding: "16px",
+          fontSize: "12px",
           lineHeight: 1.6,
-          overflowX: 'auto',
-          color: 'var(--text-primary)',
+          overflowX: "auto",
+          color: "var(--text-primary)",
         })}
       >
         {code}
       </pre>
     </div>
-  )
+  );
 }
 
 // ── Features ─────────────────────────────────────────────────────────────────
 
 const FEATURES: Array<{ title: string; desc: string }> = [
-  { title: 'Three targets', desc: 'One source file → C, C++, or JavaScript. Use -target c, -target cpp, or -target js.' },
-  { title: 'Go-style classes', desc: 'Classes with constructors, methods, and this. No inheritance. C++ target emits .h/.cpp pairs per class.' },
-  { title: 'Written in Zig', desc: 'Fast compiler with zero runtime dependencies. Single binary, cross-platform.' },
-  { title: 'Type-driven codegen', desc: 'number → double, boolean → bool, string → const char*, interface → struct, class → C++ class.' },
-  { title: 'console.log → printf', desc: 'Format strings inferred from types in C/C++. Stays as console.log in JS output.' },
-  { title: 'Built for zigc', desc: 'Transpile with zigtsc, compile with zigc. zigc build handles C and C++ output. Full native + WASM pipeline.' },
-]
+  {
+    title: "Three targets",
+    desc: "One source file → C, C++, or JavaScript. Use -target c, -target cpp, or -target js.",
+  },
+  {
+    title: "Go-style classes",
+    desc: "Classes with constructors, methods, and this. No inheritance. C++ target emits .h/.cpp pairs per class.",
+  },
+  {
+    title: "Written in Zig",
+    desc: "Fast compiler with zero runtime dependencies. Single binary, cross-platform.",
+  },
+  {
+    title: "Type-driven codegen",
+    desc: "number → double, boolean → bool, string → const char*, interface → struct, class → C++ class.",
+  },
+  {
+    title: "console.log → printf",
+    desc: "Format strings inferred from types in C/C++. Stays as console.log in JS output.",
+  },
+  {
+    title: "Built for zigc",
+    desc: "Transpile with zigtsc, compile with zigc. zigc build handles C and C++ output. Full native + WASM pipeline.",
+  },
+];
 
 function Features() {
   return () => (
-    <section aria-label="Features" mix={css({ width: '100%' })}>
+    <section aria-label="Features" mix={css({ width: "100%" })}>
       <h2 mix={css(sectionHeadingStyles)}>Features</h2>
       <div
         mix={css({
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '16px',
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: "16px",
         })}
       >
         {FEATURES.map((f) => (
@@ -247,54 +295,65 @@ function Features() {
         ))}
       </div>
     </section>
-  )
+  );
 }
 
 function FeatureCard() {
   return ({ title, desc }: { title: string; desc: string }) => (
     <div
       mix={css({
-        background: 'var(--surface-3)',
-        borderRadius: '16px',
-        padding: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
+        background: "var(--surface-3)",
+        borderRadius: "16px",
+        padding: "24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
       })}
     >
       <h3
         mix={css({
           margin: 0,
-          fontSize: '14px',
+          fontSize: "14px",
           fontWeight: 700,
-          color: 'var(--accent)',
+          color: "var(--accent)",
         })}
       >
         {title}
       </h3>
-      <p mix={css({ margin: 0, fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)' })}>
+      <p
+        mix={css({
+          margin: 0,
+          fontSize: "13px",
+          lineHeight: 1.6,
+          color: "var(--text-secondary)",
+        })}
+      >
         {desc}
       </p>
     </div>
-  )
+  );
 }
 
 // ── Quick start ──────────────────────────────────────────────────────────────
 
 function QuickStart() {
   return () => (
-    <section aria-label="Quick start" mix={css({ width: '100%' })}>
+    <section aria-label="Quick start" mix={css({ width: "100%" })}>
       <h2 mix={css(sectionHeadingStyles)}>Quick start</h2>
       <CopyBlock
-        command={"zigc init demo --ts && cd demo && zigtsc ./src/main.ts && zigc run"}
-        display={"zigc init demo --ts && \\\ncd demo && \\\nzigtsc ./src/main.ts && \\\nzigc run"}
+        command={
+          "zigtsc init demo && zigtsc transpile demo/src/main.ts && zigtsc compile demo/src/zigtscout && zigtsc run demo/zig-out/bin/main && zigtsc run demo/zig-out/wasm/main.wasm"
+        }
+        display={
+          "zigtsc init demo && \\\nzigtsc transpile demo/src/main.ts && \\\nzigtsc compile demo/src/zigtscout && \\\nzigtsc run demo/zig-out/bin/main && zigtsc run demo/zig-out/wasm/main.wasm"
+        }
       />
       <p
         mix={css({
-          marginTop: '16px',
-          fontSize: '13px',
-          color: 'var(--text-tertiary)',
-          textAlign: 'center',
+          marginTop: "16px",
+          fontSize: "13px",
+          color: "var(--text-tertiary)",
+          textAlign: "center",
         })}
       >
         <a href={routes.docs.href()} mix={css(linkStyles)}>
@@ -302,7 +361,7 @@ function QuickStart() {
         </a>
       </p>
     </section>
-  )
+  );
 }
 
 // ── Footer ───────────────────────────────────────────────────────────────────
@@ -311,86 +370,90 @@ function Footer() {
   return () => (
     <footer
       mix={css({
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '12px',
-        fontSize: '12px',
-        color: 'var(--text-tertiary)',
-        textAlign: 'center',
-        '& a': { color: 'var(--text-tertiary)', textDecoration: 'underline', textUnderlineOffset: '2px' },
-        '& a:hover': { color: 'var(--text-primary)' },
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "12px",
+        fontSize: "12px",
+        color: "var(--text-tertiary)",
+        textAlign: "center",
+        "& a": {
+          color: "var(--text-tertiary)",
+          textDecoration: "underline",
+          textUnderlineOffset: "2px",
+        },
+        "& a:hover": { color: "var(--text-primary)" },
       })}
     >
-      <div mix={css({ display: 'flex', gap: '16px' })}>
+      <div mix={css({ display: "flex", gap: "16px" })}>
         <a href="https://github.com/nathanjmorton/zigtsc">GitHub</a>
         <a href={routes.docs.href()}>Docs</a>
       </div>
       <p mix={css({ margin: 0 })}>MIT License</p>
     </footer>
-  )
+  );
 }
 
 // ── Shared styles ────────────────────────────────────────────────────────────
 
 const bodyStyles = {
-  '--surface-0': '#0c0d10',
-  '--surface-3': '#1a1b1f',
-  '--border': '#2a2b30',
-  '--text-primary': '#e8e8ec',
-  '--text-secondary': '#a0a0a8',
-  '--text-tertiary': '#6b6b74',
-  '--accent': '#60a0f0',
-  '@media (prefers-color-scheme: light)': {
-    '--surface-0': '#f5f5f7',
-    '--surface-3': '#e8e8ec',
-    '--border': '#d0d0d6',
-    '--text-primary': '#1a1b1f',
-    '--text-secondary': '#52525a',
-    '--text-tertiary': '#8b8b94',
-    '--accent': '#2563eb',
+  "--surface-0": "#0c0d10",
+  "--surface-3": "#1a1b1f",
+  "--border": "#2a2b30",
+  "--text-primary": "#e8e8ec",
+  "--text-secondary": "#a0a0a8",
+  "--text-tertiary": "#6b6b74",
+  "--accent": "#60a0f0",
+  "@media (prefers-color-scheme: light)": {
+    "--surface-0": "#f5f5f7",
+    "--surface-3": "#e8e8ec",
+    "--border": "#d0d0d6",
+    "--text-primary": "#1a1b1f",
+    "--text-secondary": "#52525a",
+    "--text-tertiary": "#8b8b94",
+    "--accent": "#2563eb",
   },
-  '& *, & *::before, & *::after': { boxSizing: 'border-box' },
+  "& *, & *::before, & *::after": { boxSizing: "border-box" },
   margin: 0,
-  padding: '48px 24px',
-  minHeight: '100vh',
-  background: 'var(--surface-0)',
-  color: 'var(--text-primary)',
+  padding: "48px 24px",
+  minHeight: "100vh",
+  background: "var(--surface-0)",
+  color: "var(--text-primary)",
   fontFamily: FONT_STACK,
-  fontSize: '14px',
+  fontSize: "14px",
   lineHeight: 1.5,
-  WebkitFontSmoothing: 'antialiased',
-  MozOsxFontSmoothing: 'grayscale',
-  display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'center',
-} as const
+  WebkitFontSmoothing: "antialiased",
+  MozOsxFontSmoothing: "grayscale",
+  display: "flex",
+  alignItems: "flex-start",
+  justifyContent: "center",
+} as const;
 
 const mainStyles = {
-  width: '100%',
-  maxWidth: '820px',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '72px',
-  paddingTop: '48px',
-} as const
+  width: "100%",
+  maxWidth: "820px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "72px",
+  paddingTop: "48px",
+} as const;
 
 const sectionHeadingStyles = {
-  margin: '0 0 20px',
-  fontSize: '14px',
+  margin: "0 0 20px",
+  fontSize: "14px",
   fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.1em',
-  color: 'var(--text-primary)',
-} as const
+  textTransform: "uppercase",
+  letterSpacing: "0.1em",
+  color: "var(--text-primary)",
+} as const;
 
 const linkStyles = {
-  color: 'var(--accent)',
-  textDecoration: 'underline',
-  textUnderlineOffset: '2px',
-  '&:hover': { color: 'var(--text-primary)' },
-} as const
+  color: "var(--accent)",
+  textDecoration: "underline",
+  textUnderlineOffset: "2px",
+  "&:hover": { color: "var(--text-primary)" },
+} as const;
 
 // ── Copy-to-clipboard ────────────────────────────────────────────────────────
 
@@ -399,29 +462,29 @@ function CopyBlock() {
     <div
       data-copy={command}
       mix={css({
-        width: '100%',
-        maxWidth: '640px',
+        width: "100%",
+        maxWidth: "640px",
         margin: 0,
-        background: 'var(--surface-3)',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '16px 20px',
-        cursor: 'pointer',
-        position: 'relative',
-        transition: 'border-color 150ms ease',
-        '&:hover': { borderColor: 'var(--accent)' },
+        background: "var(--surface-3)",
+        border: "1px solid var(--border)",
+        borderRadius: "12px",
+        padding: "16px 20px",
+        cursor: "pointer",
+        position: "relative",
+        transition: "border-color 150ms ease",
+        "&:hover": { borderColor: "var(--accent)" },
       })}
     >
       <pre
         mix={css({
           margin: 0,
-          fontSize: '13px',
+          fontSize: "13px",
           lineHeight: 1.6,
-          color: 'var(--text-primary)',
-          overflowX: 'auto',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-          '&::before': { content: '"$ "', color: 'var(--text-tertiary)' },
+          color: "var(--text-primary)",
+          overflowX: "auto",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-all",
+          "&::before": { content: '"$ "', color: "var(--text-tertiary)" },
         })}
       >
         {display}
@@ -429,18 +492,18 @@ function CopyBlock() {
       <span
         className="copy-hint"
         mix={css({
-          position: 'absolute',
-          top: '8px',
-          right: '12px',
-          fontSize: '11px',
-          color: 'var(--text-tertiary)',
-          transition: 'opacity 150ms ease',
+          position: "absolute",
+          top: "8px",
+          right: "12px",
+          fontSize: "11px",
+          color: "var(--text-tertiary)",
+          transition: "opacity 150ms ease",
         })}
       >
         click to copy
       </span>
     </div>
-  )
+  );
 }
 
 const COPY_SCRIPT = `
@@ -482,4 +545,4 @@ document.addEventListener('click', function(e) {
     }
   });
 });
-`
+`;
