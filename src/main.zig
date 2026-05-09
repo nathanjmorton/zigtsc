@@ -4,6 +4,9 @@ const Parser = @import("parser.zig").Parser;
 const Checker = @import("checker.zig").Checker;
 const CodeGenJS = @import("codegen_js.zig").CodeGenJS;
 const CodeGenCpp = @import("codegen_cpp.zig").CodeGenCpp;
+const CodeGenCuda = @import("codegen_cuda.zig").CodeGenCuda;
+const ast_mod = @import("ast.zig");
+const unpackStringRef = ast_mod.unpackStringRef;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
@@ -32,18 +35,10 @@ const HELP_TEXT =
     \\
 ;
 
-const INIT_TEMPLATE =
-    \\// zigtsc starter
-    \\//
-    \\// Transpile:  zigtsc transpile src/main.ts
-    \\// Compile:    zigtsc compile src/zigtscout
+const COUNTER_TEMPLATE =
+    \\// counter.ts — exported Counter class
     \\
-    \\interface Point {
-    \\    x: number;
-    \\    y: number;
-    \\}
-    \\
-    \\class Counter {
+    \\export class Counter {
     \\    value: i32;
     \\
     \\    constructor(init: i32) {
@@ -54,13 +49,39 @@ const INIT_TEMPLATE =
     \\        this.value = this.value + 1;
     \\    }
     \\
+    \\    decrement(): void {
+    \\        this.value = this.value - 1;
+    \\    }
+    \\
     \\    getVal(): i32 {
     \\        return this.value;
     \\    }
     \\}
     \\
-    \\const p: Point = { x: 3, y: 4 };
-    \\console.log(p.x);
+;
+
+const INIT_TEMPLATE =
+    \\// zigtsc starter — ESM multi-file example
+    \\//
+    \\// Transpile:  zigtsc transpile src/main.ts
+    \\// Compile:    zigtsc compile src/zigtscout
+    \\
+    \\import { Counter } from './counter';
+    \\
+    \\interface Point {
+    \\    x: number;
+    \\    y: number;
+    \\}
+    \\
+    \\function distance(a: Point, b: Point): number {
+    \\    let dx: number = b.x - a.x;
+    \\    let dy: number = b.y - a.y;
+    \\    return dx * dx + dy * dy;
+    \\}
+    \\
+    \\const p1: Point = { x: 0, y: 0 };
+    \\const p2: Point = { x: 3, y: 4 };
+    \\console.log(distance(p1, p2));
     \\
     \\const c = new Counter(0);
     \\c.increment();
@@ -188,7 +209,21 @@ fn runInit(io: std.Io, dir: []const u8) !void {
         return error.WriteError;
     };
 
-    std.debug.print("created {s}\n\n", .{ts_path});
+    // Write counter.ts alongside main.ts
+    var counter_path_buf: [512]u8 = undefined;
+    const counter_path = if (std.mem.eql(u8, dir, "."))
+        "src/counter.ts"
+    else blk: {
+        const len = (std.fmt.bufPrint(&counter_path_buf, "{s}/src/counter.ts", .{dir}) catch return error.PathTooLong).len;
+        break :blk counter_path_buf[0..len];
+    };
+    cwd.writeFile(io, .{ .sub_path = counter_path, .data = COUNTER_TEMPLATE }) catch {
+        std.debug.print("error: cannot write '{s}'\n", .{counter_path});
+        return error.WriteError;
+    };
+
+    std.debug.print("created {s}\n", .{ts_path});
+    std.debug.print("created {s}\n\n", .{counter_path});
     std.debug.print("next steps:\n", .{});
     if (!std.mem.eql(u8, dir, ".")) {
         std.debug.print("  cd {s}\n", .{dir});
@@ -218,24 +253,114 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
         basename = basename[0 .. basename.len - 3];
     }
 
-    // Parse
+    // Derive directory of input file for resolving relative imports
+    const in_dir: []const u8 = if (std.mem.lastIndexOfScalar(u8, in_path, '/'))
+        |sep| in_path[0..sep]
+    else
+        ".";
+
+    // Parse main file
     var parser = Parser.init(source, gpa);
     defer parser.deinit();
     const root = try parser.parse();
-    defer parser.tree.deinit();
 
     if (parser.errors.items.len > 0) {
         for (parser.errors.items) |err| {
             const loc_str = source[err.loc.start..@min(err.loc.end, source.len)];
             std.debug.print("error: {s} at '{s}'\n", .{ err.msg, loc_str });
         }
+        parser.tree.deinit();
         return error.ParseError;
     }
 
+    // Resolve imports: parse imported files and build merged source
+    const prog_node = parser.tree.nodes.items[root];
+    const stmt_start = prog_node.data.lhs;
+    const stmt_count = prog_node.data.rhs;
+
+    // Collect imported sources (declarations only)
+    var import_sources: std.ArrayList([]const u8) = .empty;
+    defer {
+        for (import_sources.items) |s| gpa.free(s);
+        import_sources.deinit(gpa);
+    }
+
+    var si: u32 = 0;
+    while (si < stmt_count) : (si += 1) {
+        const node = parser.tree.nodes.items[parser.tree.extra.items[stmt_start + si]];
+        if (node.tag == .import_decl) {
+            const mod_path = parser.tree.getString(unpackStringRef(node.data.lhs));
+            // Resolve path: strip leading ./ and append .ts
+            var clean_path = mod_path;
+            if (std.mem.startsWith(u8, clean_path, "./")) clean_path = clean_path[2..];
+            const resolved = try std.fmt.allocPrint(gpa, "{s}/{s}.ts", .{ in_dir, clean_path });
+            defer gpa.free(resolved);
+
+            const imp_source = cwd.readFileAlloc(io, resolved, gpa, .unlimited) catch {
+                std.debug.print("error: cannot read imported module '{s}'\n", .{resolved});
+                return error.FileNotFound;
+            };
+            try import_sources.append(gpa, imp_source);
+        }
+    }
+
+    // If we have imports, build merged source and re-parse
+    // Strategy: concatenate imported file sources (stripped of top-level statements)
+    // then append main source (stripped of import lines)
+    var final_tree: *ast_mod.Ast = &parser.tree;
+    var merged_parser: ?Parser = null;
+    var merged_source_alloc: ?[]const u8 = null;
+    defer {
+        if (merged_parser) |*mp| {
+            mp.tree.deinit();
+            mp.deinit();
+        } else {
+            parser.tree.deinit();
+        }
+        if (merged_source_alloc) |ms| gpa.free(ms);
+    }
+
+    var final_root = root;
+
+    if (import_sources.items.len > 0) {
+        // Build merged source
+        var merged: std.ArrayList(u8) = .empty;
+        defer merged.deinit(gpa);
+
+        // Append imported file contents (they contain declarations we need)
+        for (import_sources.items) |imp_src| {
+            try merged.appendSlice(gpa, imp_src);
+            try merged.append(gpa, '\n');
+        }
+
+        // Append main source, skipping import lines
+        // (Simple approach: include full main source — import_decl nodes are skipped by codegen)
+        try merged.appendSlice(gpa, source);
+
+        merged_source_alloc = try gpa.dupe(u8, merged.items);
+
+        // Re-parse the merged source
+        merged_parser = Parser.init(merged_source_alloc.?, gpa);
+        final_root = try merged_parser.?.parse();
+
+        if (merged_parser.?.errors.items.len > 0) {
+            for (merged_parser.?.errors.items) |err| {
+                const ms = merged_source_alloc.?;
+                const loc_str = ms[err.loc.start..@min(err.loc.end, ms.len)];
+                std.debug.print("error: {s} at '{s}'\n", .{ err.msg, loc_str });
+            }
+            return error.ParseError;
+        }
+
+        // Free original parser tree since we'll use merged
+        parser.tree.deinit();
+        final_tree = &merged_parser.?.tree;
+    }
+
     // Type check
-    var checker = Checker.init(&parser.tree, gpa);
+    var checker = Checker.init(final_tree, gpa);
     defer checker.deinit();
-    try checker.check(root);
+    try checker.check(final_root);
 
     // Write transpiled output to <input_dir>/zigtscout/
     var out_dir_buf: [512]u8 = undefined;
@@ -250,9 +375,9 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
     cwd.createDirPath(io, out_dir) catch {};
 
     // JS output
-    var js_gen = CodeGenJS.init(&parser.tree, gpa);
+    var js_gen = CodeGenJS.init(final_tree, gpa);
     defer js_gen.deinit();
-    const js_source = try js_gen.generate(root);
+    const js_source = try js_gen.generate(final_root);
     const js_path = try std.fmt.allocPrint(gpa, "{s}/{s}.js", .{ out_dir, basename });
     defer gpa.free(js_path);
 
@@ -263,9 +388,9 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
     std.debug.print("wrote {s} ({d} bytes)\n", .{ js_path, js_source.len });
 
     // Unified .h + .cpp + .c
-    var cpp_gen = CodeGenCpp.init(&parser.tree, &checker, gpa);
+    var cpp_gen = CodeGenCpp.init(final_tree, &checker, gpa);
     defer cpp_gen.deinit();
-    const files = try cpp_gen.generateUnified(root, basename);
+    const files = try cpp_gen.generateUnified(final_root, basename);
     defer {
         for (files) |file| {
             gpa.free(file.name);
@@ -283,6 +408,21 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
             return error.WriteError;
         };
         std.debug.print("wrote {s} ({d} bytes)\n", .{ out_path, file.content.len });
+    }
+
+    // CUDA output (only if source contains kernel declarations)
+    var cuda_gen = CodeGenCuda.init(final_tree, &checker, gpa);
+    defer cuda_gen.deinit();
+    const cuda_source = try cuda_gen.generate(final_root);
+    if (std.mem.indexOf(u8, cuda_source, "__global__") != null) {
+        const cu_path = try std.fmt.allocPrint(gpa, "{s}/{s}.cu", .{ out_dir, basename });
+        defer gpa.free(cu_path);
+
+        cwd.writeFile(io, .{ .sub_path = cu_path, .data = cuda_source }) catch {
+            std.debug.print("error: cannot write '{s}'\n", .{cu_path});
+            return error.WriteError;
+        };
+        std.debug.print("wrote {s} ({d} bytes)\n", .{ cu_path, cuda_source.len });
     }
 }
 

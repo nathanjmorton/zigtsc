@@ -7,6 +7,7 @@ const Checker = @import("checker.zig").Checker;
 const CodeGen = @import("codegen.zig").CodeGen;
 const CodeGenJS = @import("codegen_js.zig").CodeGenJS;
 const CodeGenCpp = @import("codegen_cpp.zig").CodeGenCpp;
+const CodeGenCuda = @import("codegen_cuda.zig").CodeGenCuda;
 const ast_mod = @import("ast.zig");
 const null_node = ast_mod.null_node;
 
@@ -487,4 +488,168 @@ test "e2e cpp free functions in main" {
         allocator.free(file.name);
         allocator.free(file.content);
     }
+}
+
+// ── CUDA codegen tests ──────────────────────────────────────────────────
+
+test "parse kernel decl" {
+    const allocator = testing.allocator;
+    const source =
+        \\kernel function vecadd(a: f32[], b: f32[], c: f32[], n: i32): void {
+        \\    const idx: i32 = threadIdx.x + blockIdx.x * blockDim.x;
+        \\    if (idx < n) {
+        \\        c[idx] = a[idx] + b[idx];
+        \\    }
+        \\}
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+    try testing.expect(root != null_node);
+
+    // First statement should be a kernel_decl
+    const prog = parser.tree.nodes.items[root];
+    try testing.expectEqual(prog.tag, .program);
+    const first_idx = parser.tree.extra.items[prog.data.lhs];
+    const first = parser.tree.nodes.items[first_idx];
+    try testing.expectEqual(first.tag, .kernel_decl);
+}
+
+test "e2e cuda kernel" {
+    const allocator = testing.allocator;
+    const source =
+        \\kernel function vecadd(a: f32[], b: f32[], c: f32[], n: i32): void {
+        \\    const idx: i32 = threadIdx.x + blockIdx.x * blockDim.x;
+        \\    if (idx < n) {
+        \\        c[idx] = a[idx] + b[idx];
+        \\    }
+        \\}
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+
+    var checker = Checker.init(&parser.tree, allocator);
+    defer checker.deinit();
+    try checker.check(root);
+
+    var codegen = CodeGenCuda.init(&parser.tree, &checker, allocator);
+    defer codegen.deinit();
+    const cu_out = try codegen.generate(root);
+
+    // Should contain CUDA headers and __global__ kernel
+    try testing.expect(std.mem.indexOf(u8, cu_out, "#include <cuda_runtime.h>") != null);
+    try testing.expect(std.mem.indexOf(u8, cu_out, "__global__ void vecadd(float* a, float* b, float* c, int32_t n)") != null);
+    try testing.expect(std.mem.indexOf(u8, cu_out, "threadIdx.x") != null);
+    try testing.expect(std.mem.indexOf(u8, cu_out, "blockIdx.x") != null);
+    try testing.expect(std.mem.indexOf(u8, cu_out, "blockDim.x") != null);
+    // Should NOT have a main() since there are no top-level statements
+    try testing.expect(std.mem.indexOf(u8, cu_out, "int main(") == null);
+}
+
+// ── Import tests ────────────────────────────────────────────────────────
+
+test "lex import and from keywords" {
+    var lex = Lexer.init("import from");
+    try testing.expectEqual(Token.Tag.kw_import, lex.next().tag);
+    try testing.expectEqual(Token.Tag.kw_from, lex.next().tag);
+    try testing.expectEqual(Token.Tag.eof, lex.next().tag);
+}
+
+test "parse import decl" {
+    const allocator = testing.allocator;
+    const source =
+        \\import { Counter } from './counter';
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+    try testing.expect(root != null_node);
+
+    // First statement should be an import_decl
+    const prog = parser.tree.nodes.items[root];
+    try testing.expectEqual(prog.tag, .program);
+    const first_idx = parser.tree.extra.items[prog.data.lhs];
+    const first = parser.tree.nodes.items[first_idx];
+    try testing.expectEqual(first.tag, .import_decl);
+}
+
+test "parse import with multiple names" {
+    const allocator = testing.allocator;
+    const source =
+        \\import { Foo, Bar } from './module';
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    _ = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+}
+
+test "e2e import skipped in codegen" {
+    const allocator = testing.allocator;
+    const source =
+        \\import { Counter } from './counter';
+        \\const x: number = 42;
+        \\console.log(x);
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+
+    var checker = Checker.init(&parser.tree, allocator);
+    defer checker.deinit();
+    try checker.check(root);
+
+    // C codegen should skip import_decl and still produce main()
+    var codegen = CodeGen.init(&parser.tree, &checker, allocator);
+    defer codegen.deinit();
+    const c_out = try codegen.generate(root);
+    try testing.expect(std.mem.indexOf(u8, c_out, "int main(") != null);
+    try testing.expect(std.mem.indexOf(u8, c_out, "printf(") != null);
+    // Should NOT contain "import" in C output
+    try testing.expect(std.mem.indexOf(u8, c_out, "import") == null);
+}
+
+// ── CUDA codegen tests (continued) ──────────────────────────────────────
+
+test "e2e cuda kernel with host code" {
+    const allocator = testing.allocator;
+    const source =
+        \\kernel function scale(arr: f32[], factor: f32, n: i32): void {
+        \\    const i: i32 = threadIdx.x + blockIdx.x * blockDim.x;
+        \\    if (i < n) {
+        \\        arr[i] = arr[i] * factor;
+        \\    }
+        \\}
+        \\const n: i32 = 1024;
+        \\console.log(n);
+    ;
+    var parser = Parser.init(source, allocator);
+    defer parser.deinit();
+    const root = try parser.parse();
+    defer parser.tree.deinit();
+    try testing.expectEqual(@as(usize, 0), parser.errors.items.len);
+
+    var checker = Checker.init(&parser.tree, allocator);
+    defer checker.deinit();
+    try checker.check(root);
+
+    var codegen = CodeGenCuda.init(&parser.tree, &checker, allocator);
+    defer codegen.deinit();
+    const cu_out = try codegen.generate(root);
+
+    // Kernel should be __global__
+    try testing.expect(std.mem.indexOf(u8, cu_out, "__global__ void scale(") != null);
+    // Should have main() for host code
+    try testing.expect(std.mem.indexOf(u8, cu_out, "int main(void)") != null);
+    try testing.expect(std.mem.indexOf(u8, cu_out, "printf(") != null);
 }

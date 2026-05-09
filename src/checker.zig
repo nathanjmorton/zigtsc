@@ -72,9 +72,10 @@ pub const Checker = struct {
         const node = self.tree.nodes.items[idx];
         switch (node.tag) {
             .var_decl => try self.checkVarDecl(node),
-            .func_decl => try self.checkFuncDecl(node),
+            .func_decl, .kernel_decl => try self.checkFuncDecl(node),
             .interface_decl => try self.checkInterfaceDecl(node),
             .class_decl => try self.checkClassDecl(node),
+            .import_decl => {},
             .if_stmt => { _ = try self.resolveExprType(node.data.lhs); try self.checkNode(node.data.rhs); const e = self.tree.extra.items[node.data.extra]; if (e != null_node) try self.checkNode(e); },
             .while_stmt => { _ = try self.resolveExprType(node.data.lhs); try self.checkNode(node.data.rhs); },
             .for_stmt => { const es = node.data.lhs; try self.checkNode(self.tree.extra.items[es]); try self.checkNode(node.data.rhs); },

@@ -43,10 +43,10 @@ pub const CodeGen = struct {
         i = 0; while (i < count) : (i += 1) { const s = self.tree.nodes.items[self.tree.extra.items[start + i]]; if (s.tag == .func_decl) { try self.emitFuncSig(s, false); try self.w(" "); try self.emitBlock(s.data.rhs); try self.w("\n\n"); } }
         // main
         var has_top = false;
-        i = 0; while (i < count) : (i += 1) { const s = self.tree.nodes.items[self.tree.extra.items[start + i]]; if (s.tag != .func_decl and s.tag != .interface_decl) { has_top = true; break; } }
+        i = 0; while (i < count) : (i += 1) { const s = self.tree.nodes.items[self.tree.extra.items[start + i]]; if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .import_decl) { has_top = true; break; } }
         if (has_top) {
             try self.w("int main(void) {\n"); self.indent += 1;
-            i = 0; while (i < count) : (i += 1) { const idx = self.tree.extra.items[start + i]; const s = self.tree.nodes.items[idx]; if (s.tag != .func_decl and s.tag != .interface_decl) try self.emitStmt(idx); }
+            i = 0; while (i < count) : (i += 1) { const idx = self.tree.extra.items[start + i]; const s = self.tree.nodes.items[idx]; if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .import_decl) try self.emitStmt(idx); }
             try self.writeIndent(); try self.w("return 0;\n"); self.indent -= 1; try self.w("}\n");
         }
         return self.out.items;
@@ -231,7 +231,8 @@ pub const CodeGen = struct {
     fn assignStr(op: Op) []const u8 {
         return switch (op) { .assign => " = ", .add_assign => " += ", .sub_assign => " -= ", .mul_assign => " *= ", .div_assign => " /= ", else => " = " };
     }
-        pub fn generateBuildCommand(self: *CodeGen, target: []const u8, writer: anytype) !void {
+    pub fn generateBuildCommand(self: *CodeGen, target: []const u8, writer: anytype) !void {
+        _ = self;
         if (std.mem.eql(u8, target, "wasm32-wasi")) {
             try writer.writeAll("zig build-exe -target wasm32-wasi main.c main.cpp -lc -o main.wasm\n");
         } else {

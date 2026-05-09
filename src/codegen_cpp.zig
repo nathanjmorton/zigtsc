@@ -265,11 +265,11 @@ pub const CodeGenCpp = struct {
         // main()
         var has_top = false;
         i = 0;
-        while (i < count) : (i += 1) { const s = self.tree.nodes.items[self.tree.extra.items[start_idx + i]]; if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl) { has_top = true; break; } }
+        while (i < count) : (i += 1) { const s = self.tree.nodes.items[self.tree.extra.items[start_idx + i]]; if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl and s.tag != .import_decl) { has_top = true; break; } }
         if (has_top) {
             try self.w("int main() {\n"); self.indent += 1;
             i = 0;
-            while (i < count) : (i += 1) { const idx = self.tree.extra.items[start_idx + i]; const s = self.tree.nodes.items[idx]; if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl) try self.emitStmt(idx); }
+            while (i < count) : (i += 1) { const idx = self.tree.extra.items[start_idx + i]; const s = self.tree.nodes.items[idx]; if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl and s.tag != .import_decl) try self.emitStmt(idx); }
             try self.writeIndent(); try self.w("return 0;\n"); self.indent -= 1; try self.w("}\n");
         }
     }
@@ -899,7 +899,7 @@ pub const CodeGenCpp = struct {
         i = 0;
         while (i < count) : (i += 1) {
             const s = self.tree.nodes.items[self.tree.extra.items[start_idx + i]];
-            if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl) { has_top = true; break; }
+            if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl and s.tag != .import_decl) { has_top = true; break; }
         }
         if (has_top) {
             try self.w("int main(void) {\n"); self.indent += 1;
@@ -907,7 +907,7 @@ pub const CodeGenCpp = struct {
             while (i < count) : (i += 1) {
                 const idx = self.tree.extra.items[start_idx + i];
                 const s = self.tree.nodes.items[idx];
-                if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl)
+                if (s.tag != .func_decl and s.tag != .interface_decl and s.tag != .class_decl and s.tag != .import_decl)
                     try self.emitStmt(idx);
             }
             try self.writeIndent(); try self.w("return 0;\n"); self.indent -= 1; try self.w("}\n");

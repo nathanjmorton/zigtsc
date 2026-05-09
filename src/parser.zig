@@ -52,7 +52,9 @@ pub const Parser = struct {
     fn parseTopLevel(self: *Parser) !NodeIndex {
         if (self.current.tag == .kw_export) self.bump();
         return switch (self.current.tag) {
+            .kw_import => self.parseImportDecl(),
             .kw_function => self.parseFuncDecl(),
+            .kw_kernel => self.parseKernelDecl(),
             .kw_interface => self.parseInterfaceDecl(),
             .kw_class => self.parseClassDecl(),
             .kw_type => self.parseTypeAlias(),
@@ -61,7 +63,60 @@ pub const Parser = struct {
         };
     }
 
+    /// Parses: import { Name1, Name2 } from './path';
+    /// Data layout: lhs = packed StringRef for module path (without quotes)
+    ///              rhs = extra_start → [count, packed_name_0, packed_name_1, ...]
+    fn parseImportDecl(self: *Parser) !NodeIndex {
+        self.bump(); // consume 'import'
+        try self.expect(.lbrace);
+        var names: std.ArrayList(u32) = .empty;
+        defer names.deinit(self.allocator);
+        while (self.current.tag != .rbrace and self.current.tag != .eof) {
+            const name_ref = try self.expectIdentString();
+            try names.append(self.allocator, packStringRef(name_ref));
+            if (self.current.tag == .comma) self.bump();
+        }
+        try self.expect(.rbrace);
+        // expect 'from'
+        if (self.current.tag != .kw_from) {
+            try self.errors.append(self.allocator, .{ .msg = "expected 'from'", .loc = self.current.loc });
+            return null_node;
+        }
+        self.bump();
+        // expect string literal for module path
+        if (self.current.tag != .string_literal) {
+            try self.errors.append(self.allocator, .{ .msg = "expected module path string", .loc = self.current.loc });
+            return null_node;
+        }
+        // Strip quotes from the path string
+        const raw = self.current.slice(self.tree.source);
+        const path_str = if (raw.len >= 2) raw[1 .. raw.len - 1] else raw;
+        const path_ref = try self.tree.internString(path_str);
+        self.bump();
+        if (self.current.tag == .semicolon) self.bump();
+        // Pack extra: [count, packed_name_0, packed_name_1, ...]
+        const extra_start = try self.tree.addExtra(@intCast(names.items.len));
+        for (names.items) |n| _ = try self.tree.addExtra(n);
+        return self.tree.addNode(.{
+            .tag = .import_decl,
+            .data = .{ .lhs = packStringRef(path_ref), .rhs = extra_start },
+        });
+    }
+
     fn parseFuncDecl(self: *Parser) !NodeIndex {
+        return self.parseFuncDeclWithTag(.func_decl);
+    }
+
+    fn parseKernelDecl(self: *Parser) !NodeIndex {
+        self.bump(); // consume 'kernel'
+        if (self.current.tag != .kw_function) {
+            try self.errors.append(self.allocator, .{ .msg = "expected 'function' after 'kernel'", .loc = self.current.loc });
+            return null_node;
+        }
+        return self.parseFuncDeclWithTag(.kernel_decl);
+    }
+
+    fn parseFuncDeclWithTag(self: *Parser, tag: Node.Tag) !NodeIndex {
         self.bump();
         const name_ref = try self.expectIdentString();
         try self.expect(.lparen);
@@ -84,7 +139,7 @@ pub const Parser = struct {
         _ = try self.tree.addExtra(@intCast(params.items.len));
         for (params.items) |p| _ = try self.tree.addExtra(p);
         return self.tree.addNode(.{
-            .tag = .func_decl,
+            .tag = tag,
             .data = .{ .lhs = packStringRef(name_ref), .rhs = body, .extra = extra_start },
         });
     }

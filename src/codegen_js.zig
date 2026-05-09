@@ -28,7 +28,7 @@ pub const CodeGenJS = struct {
             const idx = self.tree.extra.items[start + i];
             const s = self.tree.nodes.items[idx];
             switch (s.tag) {
-                .interface_decl => {}, // interfaces are compile-time only — omit
+                .interface_decl, .import_decl => {}, // compile-time only — omit
                 .class_decl => try self.emitClassDecl(s),
                 .func_decl => { try self.emitFuncDecl(s); try self.w("\n"); },
                 else => try self.emitStmt(idx),
