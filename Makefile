@@ -70,11 +70,11 @@ demo-released-run:
 # Verify both the local build and the installed release work end-to-end
 test-all: all demo-released
 
-website:
-	npm --prefix www run dev
-
 upgrade:
 	brew update && brew upgrade zigtsc
+
+website:
+	npm --prefix www run dev
 
 # Ship: release, wait for CI to finish, then upgrade the local install.
 # Usage: make ship          (auto-bumps minor)
