@@ -10,7 +10,7 @@ const unpackStringRef = ast_mod.unpackStringRef;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
-const VERSION = "0.13.0";
+const VERSION = "0.14.0";
 
 const HELP_TEXT =
     \\zigtsc — TypeScript subset → C / C++ / JS transpiler & compiler
@@ -35,8 +35,23 @@ const HELP_TEXT =
     \\
 ;
 
+const MATH_TEMPLATE =
+    \\// math.ts — basic arithmetic helpers
+    \\
+    \\export function add(a: i32, b: i32): i32 {
+    \\    return a + b;
+    \\}
+    \\
+    \\export function subtract(a: i32, b: i32): i32 {
+    \\    return a - b;
+    \\}
+    \\
+;
+
 const COUNTER_TEMPLATE =
     \\// counter.ts — exported Counter class
+    \\
+    \\import { add, subtract } from './math';
     \\
     \\export class Counter {
     \\    value: i32;
@@ -46,11 +61,11 @@ const COUNTER_TEMPLATE =
     \\    }
     \\
     \\    increment(): void {
-    \\        this.value = this.value + 1;
+    \\        this.value = add(this.value, 1);
     \\    }
     \\
     \\    decrement(): void {
-    \\        this.value = this.value - 1;
+    \\        this.value = subtract(this.value, 1);
     \\    }
     \\
     \\    getVal(): i32 {
@@ -61,7 +76,7 @@ const COUNTER_TEMPLATE =
 ;
 
 const INIT_TEMPLATE =
-    \\// zigtsc starter — ESM multi-file example
+    \\// zigtsc starter — recursive ESM multi-file example
     \\//
     \\// Transpile:  zigtsc transpile src/main.ts
     \\// Compile:    zigtsc compile src/zigtscout
@@ -222,8 +237,22 @@ fn runInit(io: std.Io, dir: []const u8) !void {
         return error.WriteError;
     };
 
+    // Write math.ts alongside counter.ts
+    var math_path_buf: [512]u8 = undefined;
+    const math_path = if (std.mem.eql(u8, dir, "."))
+        "src/math.ts"
+    else blk: {
+        const len = (std.fmt.bufPrint(&math_path_buf, "{s}/src/math.ts", .{dir}) catch return error.PathTooLong).len;
+        break :blk math_path_buf[0..len];
+    };
+    cwd.writeFile(io, .{ .sub_path = math_path, .data = MATH_TEMPLATE }) catch {
+        std.debug.print("error: cannot write '{s}'\n", .{math_path});
+        return error.WriteError;
+    };
+
     std.debug.print("created {s}\n", .{ts_path});
-    std.debug.print("created {s}\n\n", .{counter_path});
+    std.debug.print("created {s}\n", .{counter_path});
+    std.debug.print("created {s}\n\n", .{math_path});
     std.debug.print("next steps:\n", .{});
     if (!std.mem.eql(u8, dir, ".")) {
         std.debug.print("  cd {s}\n", .{dir});
@@ -273,40 +302,82 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
         return error.ParseError;
     }
 
-    // Resolve imports: parse imported files and build merged source
-    const prog_node = parser.tree.nodes.items[root];
-    const stmt_start = prog_node.data.lhs;
-    const stmt_count = prog_node.data.rhs;
+    // ── Recursive import resolution (worklist) ────────────────────────────
+    // Walk imports transitively: main → A → B → ... deduplicating by path.
+    // Collected sources are kept in dependency order (deepest-first).
 
-    // Collect imported sources (declarations only)
     var import_sources: std.ArrayList([]const u8) = .empty;
     defer {
         for (import_sources.items) |s| gpa.free(s);
         import_sources.deinit(gpa);
     }
 
-    var si: u32 = 0;
-    while (si < stmt_count) : (si += 1) {
-        const node = parser.tree.nodes.items[parser.tree.extra.items[stmt_start + si]];
-        if (node.tag == .import_decl) {
-            const mod_path = parser.tree.getString(unpackStringRef(node.data.lhs));
-            // Resolve path: strip leading ./ and append .ts
-            var clean_path = mod_path;
-            if (std.mem.startsWith(u8, clean_path, "./")) clean_path = clean_path[2..];
-            const resolved = try std.fmt.allocPrint(gpa, "{s}/{s}.ts", .{ in_dir, clean_path });
-            defer gpa.free(resolved);
-
-            const imp_source = cwd.readFileAlloc(io, resolved, gpa, .unlimited) catch {
-                std.debug.print("error: cannot read imported module '{s}'\n", .{resolved});
-                return error.FileNotFound;
-            };
-            try import_sources.append(gpa, imp_source);
-        }
+    // Set of already-resolved paths to avoid duplicates / cycles
+    var visited: std.StringHashMapUnmanaged(void) = .empty;
+    defer {
+        var vit = visited.iterator();
+        while (vit.next()) |entry| gpa.free(@constCast(entry.key_ptr.*));
+        visited.deinit(gpa);
     }
 
-    // If we have imports, build merged source and re-parse
-    // Strategy: concatenate imported file sources (stripped of top-level statements)
-    // then append main source (stripped of import lines)
+    // Seed the worklist with imports from the main file
+    var worklist: std.ArrayList(WorkItem) = .empty;
+    defer {
+        for (worklist.items) |w| gpa.free(w.resolved_path);
+        worklist.deinit(gpa);
+    }
+    try extractImports(&parser.tree, root, in_dir, gpa, &worklist);
+
+    // Process worklist — each item may add more items
+    while (worklist.items.len > 0) {
+        const item = worklist.orderedRemove(0);
+        defer gpa.free(item.resolved_path);
+
+        // Skip if already visited
+        if (visited.get(item.resolved_path) != null) continue;
+
+        // Mark visited (own the key)
+        const key = try gpa.dupe(u8, item.resolved_path);
+        try visited.put(gpa, key, {});
+
+        // Read the imported file
+        const imp_source = cwd.readFileAlloc(io, item.resolved_path, gpa, .unlimited) catch {
+            std.debug.print("error: cannot read imported module '{s}'\n", .{item.resolved_path});
+            return error.FileNotFound;
+        };
+
+        // Parse it to discover its own imports
+        var imp_parser = Parser.init(imp_source, gpa);
+        const imp_root = try imp_parser.parse();
+
+        if (imp_parser.errors.items.len > 0) {
+            for (imp_parser.errors.items) |err| {
+                const loc_str = imp_source[err.loc.start..@min(err.loc.end, imp_source.len)];
+                std.debug.print("error: {s} at '{s}' in '{s}'\n", .{ err.msg, loc_str, item.resolved_path });
+            }
+            imp_parser.tree.deinit();
+            imp_parser.deinit();
+            gpa.free(imp_source);
+            return error.ParseError;
+        }
+
+        // Derive directory of this imported file for resolving its own imports
+        const imp_dir: []const u8 = if (std.mem.lastIndexOfScalar(u8, item.resolved_path, '/'))
+            |sep| item.resolved_path[0..sep]
+        else
+            ".";
+
+        // Add any imports from this file to the worklist
+        try extractImports(&imp_parser.tree, imp_root, imp_dir, gpa, &worklist);
+
+        imp_parser.tree.deinit();
+        imp_parser.deinit();
+
+        // Keep the source for merging
+        try import_sources.append(gpa, imp_source);
+    }
+
+    // ── Build merged source and re-parse ─────────────────────────────────
     var final_tree: *ast_mod.Ast = &parser.tree;
     var merged_parser: ?Parser = null;
     var merged_source_alloc: ?[]const u8 = null;
@@ -323,23 +394,20 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
     var final_root = root;
 
     if (import_sources.items.len > 0) {
-        // Build merged source
         var merged: std.ArrayList(u8) = .empty;
         defer merged.deinit(gpa);
 
-        // Append imported file contents (they contain declarations we need)
+        // Prepend all imported file contents (dependency order)
         for (import_sources.items) |imp_src| {
             try merged.appendSlice(gpa, imp_src);
             try merged.append(gpa, '\n');
         }
 
-        // Append main source, skipping import lines
-        // (Simple approach: include full main source — import_decl nodes are skipped by codegen)
+        // Append main source (import_decl nodes are skipped by codegen)
         try merged.appendSlice(gpa, source);
 
         merged_source_alloc = try gpa.dupe(u8, merged.items);
 
-        // Re-parse the merged source
         merged_parser = Parser.init(merged_source_alloc.?, gpa);
         final_root = try merged_parser.?.parse();
 
@@ -352,7 +420,6 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
             return error.ParseError;
         }
 
-        // Free original parser tree since we'll use merged
         parser.tree.deinit();
         final_tree = &merged_parser.?.tree;
     }
@@ -423,6 +490,36 @@ fn runTranspile(io: std.Io, gpa: std.mem.Allocator, in_path: []const u8) !void {
             return error.WriteError;
         };
         std.debug.print("wrote {s} ({d} bytes)\n", .{ cu_path, cuda_source.len });
+    }
+}
+
+// ── import resolution helpers ────────────────────────────────────────────────
+
+const WorkItem = struct { resolved_path: []const u8 };
+
+/// Walk a parsed program's top-level statements and append a WorkItem for
+/// each `import_decl`, resolving the module path relative to `base_dir`.
+fn extractImports(
+    tree: *const ast_mod.Ast,
+    root: ast_mod.NodeIndex,
+    base_dir: []const u8,
+    alloc: std.mem.Allocator,
+    worklist: *std.ArrayList(WorkItem),
+) !void {
+    const node = tree.nodes.items[root];
+    if (node.tag != .program) return;
+    const start = node.data.lhs;
+    const count = node.data.rhs;
+    var i: u32 = 0;
+    while (i < count) : (i += 1) {
+        const s = tree.nodes.items[tree.extra.items[start + i]];
+        if (s.tag == .import_decl) {
+            const mod_path = tree.getString(unpackStringRef(s.data.lhs));
+            var clean = mod_path;
+            if (std.mem.startsWith(u8, clean, "./")) clean = clean[2..];
+            const resolved = try std.fmt.allocPrint(alloc, "{s}/{s}.ts", .{ base_dir, clean });
+            try worklist.append(alloc, .{ .resolved_path = resolved });
+        }
     }
 }
 
