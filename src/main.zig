@@ -10,7 +10,7 @@ const unpackStringRef = ast_mod.unpackStringRef;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
-const VERSION = "0.14.0";
+const VERSION = "0.15.0";
 
 const HELP_TEXT =
     \\zigtsc — TypeScript subset → C / C++ / JS transpiler & compiler
@@ -32,6 +32,28 @@ const HELP_TEXT =
     \\
     \\Docs:   https://zigtsc.nathanjmorton.com/docs
     \\GitHub: https://github.com/nathanjmorton/zigtsc
+    \\
+;
+
+const TSCONFIG_TEMPLATE =
+    \\{
+    \\  "compilerOptions": {
+    \\    "strict": true,
+    \\    "target": "ES2020",
+    \\    "module": "ES2020",
+    \\    "moduleResolution": "bundler"
+    \\  },
+    \\  "include": ["src"]
+    \\}
+    \\
+;
+
+const ZIGTSC_DTS_TEMPLATE =
+    \\// zigtsc type declarations — custom numeric types for native compilation
+    \\type i32 = number;
+    \\type i64 = number;
+    \\type f32 = number;
+    \\type f64 = number;
     \\
 ;
 
@@ -211,6 +233,32 @@ fn runInit(io: std.Io, dir: []const u8) !void {
     };
     cwd.createDirPath(io, src_dir_path) catch {};
 
+    // Write tsconfig.json at project root
+    var tsconfig_path_buf: [512]u8 = undefined;
+    const tsconfig_path = if (std.mem.eql(u8, dir, "."))
+        "tsconfig.json"
+    else blk: {
+        const len = (std.fmt.bufPrint(&tsconfig_path_buf, "{s}/tsconfig.json", .{dir}) catch return error.PathTooLong).len;
+        break :blk tsconfig_path_buf[0..len];
+    };
+    cwd.writeFile(io, .{ .sub_path = tsconfig_path, .data = TSCONFIG_TEMPLATE }) catch {
+        std.debug.print("error: cannot write '{s}'\n", .{tsconfig_path});
+        return error.WriteError;
+    };
+
+    // Write zigtsc.d.ts type declarations
+    var dts_path_buf: [512]u8 = undefined;
+    const dts_path = if (std.mem.eql(u8, dir, "."))
+        "src/zigtsc.d.ts"
+    else blk: {
+        const len = (std.fmt.bufPrint(&dts_path_buf, "{s}/src/zigtsc.d.ts", .{dir}) catch return error.PathTooLong).len;
+        break :blk dts_path_buf[0..len];
+    };
+    cwd.writeFile(io, .{ .sub_path = dts_path, .data = ZIGTSC_DTS_TEMPLATE }) catch {
+        std.debug.print("error: cannot write '{s}'\n", .{dts_path});
+        return error.WriteError;
+    };
+
     var ts_path_buf: [512]u8 = undefined;
     const ts_path = if (std.mem.eql(u8, dir, "."))
         "src/main.ts"
@@ -250,6 +298,8 @@ fn runInit(io: std.Io, dir: []const u8) !void {
         return error.WriteError;
     };
 
+    std.debug.print("created {s}\n", .{tsconfig_path});
+    std.debug.print("created {s}\n", .{dts_path});
     std.debug.print("created {s}\n", .{ts_path});
     std.debug.print("created {s}\n", .{counter_path});
     std.debug.print("created {s}\n\n", .{math_path});
