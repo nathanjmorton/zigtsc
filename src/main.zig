@@ -10,7 +10,7 @@ const unpackStringRef = ast_mod.unpackStringRef;
 
 // ── Version ───────────────────────────────────────────────────────────────────
 
-const VERSION = "0.15.0";
+const VERSION = "0.16.0";
 
 const HELP_TEXT =
     \\zigtsc — TypeScript subset → C / C++ / JS transpiler & compiler
