@@ -788,6 +788,23 @@ pub const CodeGenCpp = struct {
 
         try self.w("#include \""); try self.w(basename); try self.w(".h\"\n\n");
 
+        // Forward-declare free functions (compiled as C in the .c file)
+        {
+            var has_free_fns = false;
+            var fi: u32 = 0;
+            while (fi < count) : (fi += 1) {
+                const s = self.tree.nodes.items[self.tree.extra.items[start_idx + fi]];
+                if (s.tag == .func_decl) {
+                    if (!has_free_fns) {
+                        try self.w("extern \"C\" {\n");
+                        has_free_fns = true;
+                    }
+                    try self.emitFuncSig(s, true);
+                }
+            }
+            if (has_free_fns) try self.w("}\n\n");
+        }
+
         // Class implementations (no per-class includes — unified header handles it)
         var i: u32 = 0;
         while (i < count) : (i += 1) {
